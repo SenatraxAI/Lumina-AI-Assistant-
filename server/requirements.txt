@@ -1,0 +1,24 @@
+# server/requirements.txt
+
+# FastAPI and server
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
+
+# AI Models
+# Using Google Generative AI for Gemini
+google-generativeai>=0.3.0
+openai>=1.0.0
+anthropic>=0.3.0
+# Using Pocket TTS (assumed package name from plan)
+pocket-tts>=0.1.0
+
+# NovaSR Audio Super-Resolution
+novasr @ git+https://github.com/ysharma3501/NovaSR.git
+# Audio processing
+numpy>=1.24.0
+scipy>=1.11.0
+Pillow>=10.0.0
+
+# Development
+python-dotenv>=1.0.0
