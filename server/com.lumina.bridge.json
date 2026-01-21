@@ -1,0 +1,9 @@
+{
+    "name": "com.lumina.bridge",
+    "description": "Lumina AI Local Bridge",
+    "path": "bridge.bat",
+    "type": "stdio",
+    "allowed_origins": [
+        "chrome-extension://hfopjgfdmfckmjkhghjdfmlhfmfmclhf/"
+    ]
+}

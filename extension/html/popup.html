@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumina Settings</title>
+    <link rel="stylesheet" href="../css/popup.css">
+</head>
+
+<body>
+    <div class="popup-container">
+        <header class="popup-header">
+            <div class="brand">
+                <div class="logo">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                        <line x1="12" y1="19" x2="12" y2="23"></line>
+                        <line x1="8" y1="23" x2="16" y2="23"></line>
+                    </svg>
+                </div>
+                <h1>Lumina</h1>
+            </div>
+            <button id="save-settings" class="btn-save">Save</button>
+        </header>
+
+        <main class="popup-content">
+            <!-- 0. Engine Control (🎯 v4.0 One-Click) -->
+            <section class="card">
+                <div class="engine-control-row">
+                    <div class="engine-info">
+                        <h2>Engine Status</h2>
+                        <div id="engine-status" class="status-indicator stopped">🔴 Stopped</div>
+                    </div>
+                    <button id="toggle-engine" class="btn-toggle-engine">Start Engine</button>
+                </div>
+            </section>
+
+            <!-- 1. Voice Customization -->
+            <section class="card">
+                <div class="card-header">
+                    <h2>Voice Studio</h2>
+                </div>
+                <div class="card-body">
+                    <div class="input-group">
+                        <label for="default-voice">Active Voice</label>
+                        <select id="default-voice">
+                            <option value="alba">Alba (Recommended)</option>
+                            <option value="marius">Marius</option>
+                            <option value="jean">Jean</option>
+                        </select>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- 2. AI Configuration (Collapsible) -->
+            <section class="card collapsed" id="advanced-settings-card">
+                <div class="card-header toggle-header">
+                    <h2>Advanced AI Config</h2>
+                    <span class="chevron">▼</span>
+                </div>
+                <div class="card-body">
+                    <div class="input-group">
+                        <label for="llm-provider">LLM Provider</label>
+                        <select id="llm-provider">
+                            <option value="gemini">Google Gemini (Default)</option>
+                            <option value="groq">Groq (Llama 3.1 8B)</option>
+                            <option value="openai">OpenAI (GPT-4o)</option>
+                            <option value="claude">Anthropic Claude</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group dynamic-api-key" id="group-gemini">
+                        <label for="api-key-gemini">Gemini API Key</label>
+                        <input type="password" id="api-key-gemini" placeholder="AIzaSy...">
+                    </div>
+
+                    <div class="input-group dynamic-api-key hidden" id="group-groq">
+                        <label for="api-key-groq">Groq API Key</label>
+                        <input type="password" id="api-key-groq" placeholder="gsk_...">
+                    </div>
+
+                    <div class="input-group dynamic-api-key hidden" id="group-openai">
+                        <label for="api-key-openai">OpenAI API Key</label>
+                        <input type="password" id="api-key-openai" placeholder="sk-...">
+                    </div>
+
+                    <div class="input-group dynamic-api-key hidden" id="group-claude">
+                        <label for="api-key-claude">Claude API Key</label>
+                        <input type="password" id="api-key-claude" placeholder="sk-ant-...">
+                    </div>
+
+                    <div class="input-group">
+                        <label for="response-tone">AI Personality</label>
+                        <select id="response-tone">
+                            <option value="helpful">Helpful (Expert Tutor)</option>
+                            <option value="concise">Concise (News Anchor)</option>
+                            <option value="casual">Casual (Study Buddy)</option>
+                            <option value="strict">Strict & Factual</option>
+                            <option value="eli5">Explain Like I'm 5</option>
+                            <option value="custom">Custom Personality...</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group hidden" id="group-custom-persona">
+                        <label for="custom-persona">Custom System Prompt</label>
+                        <textarea id="custom-persona" rows="3"
+                            placeholder="You are a sarcastic pirate who explains physics..."></textarea>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="server-url">Lumina Server URL</label>
+                        <input type="url" id="server-url" placeholder="http://localhost:8080">
+                    </div>
+
+                    <div class="toggle-row" style="margin-top: 15px; justify-content: space-between;">
+                        <div>
+                            <label class="toggle-label" for="use-cuda" style="font-weight: 500;">Enable GPU Acceleration
+                                (CUDA)</label>
+                            <div style="font-size: 11px; color: #aaa; margin-top: 4px;">
+                                Requires PyTorch with CUDA support. <a href="https://pytorch.org/get-started/locally/"
+                                    target="_blank" style="color: #8b5cf6;">Setup Guide</a>
+                            </div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="use-cuda">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <button id="test-connection" class="btn-text">Test Server Connection</button>
+                </div>
+            </section>
+
+            <!-- 3. Behaviors -->
+            <section class="card">
+                <div class="card-body">
+                    <div class="toggle-row">
+                        <label class="toggle-label" for="auto-read">Auto-play Answers</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="auto-read">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="toggle-row">
+                        <label class="toggle-label" for="include-screenshot">Include Screenshots</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="include-screenshot">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. Quick Help -->
+            <section class="help-section">
+                <h3>Quick Start</h3>
+                <ol class="help-steps">
+                    <li>Select text on any page</li>
+                    <li>Click the <strong>Lightbulb 💡</strong> or use <code>Ctrl+Shift+Y</code></li>
+                    <li>Listen to the magic!</li>
+                </ol>
+            </section>
+        </main>
+    </div>
+    <script src="../js/popup.js"></script>
+</body>
+
+</html>
