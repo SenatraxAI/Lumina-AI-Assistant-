@@ -1,0 +1,1131 @@
+/* css/content.css */
+
+/* ========================================
+   THEME SYSTEM - CSS VARIABLES
+   ======================================== */
+
+:root {
+    /* Light Theme (Default) */
+    --bg-primary: #ffffff;
+    --bg-secondary: #F9FAFB;
+    --bg-tertiary: #F3F4F6;
+    --text-primary: #1F2937;
+    --text-secondary: #4B5563;
+    --text-tertiary: #9CA3AF;
+    --border-color: #E5E7EB;
+    --accent-primary: #F59E0B;
+    --accent-secondary: #D97706;
+    --accent-gradient: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+    --shadow-sm: 0 2px 5px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 15px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="dark"] {
+    /* Dark Theme */
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-tertiary: #334155;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-tertiary: #64748b;
+    --border-color: rgba(255, 255, 255, 0.1);
+    --accent-primary: #6366f1;
+    --accent-secondary: #8b5cf6;
+    --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    --shadow-sm: 0 2px 5px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 15px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* ========================================
+   COMPONENTS
+   ======================================== */
+
+/* Floating Trigger Button */
+#lumina-trigger {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    background: var(--bg-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: var(--shadow-md), 0 0 0 1px var(--border-color);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0;
+    transform: scale(0.8) translateY(10px);
+    pointer-events: none;
+    z-index: 2147483647;
+}
+
+#lumina-trigger.lumina-visible {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    pointer-events: auto;
+}
+
+#lumina-trigger:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 25px rgba(99, 102, 241, 0.5);
+}
+
+#lumina-trigger svg {
+    color: var(--accent-primary);
+    filter: none;
+}
+
+.lumina-trigger-tooltip {
+    position: absolute;
+    bottom: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+#lumina-trigger:hover .lumina-trigger-tooltip {
+    opacity: 1;
+}
+
+/* Query Widget */
+/* Query Widget */
+#lumina-query-widget {
+    position: absolute;
+    width: 360px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg), 0 0 0 1px var(--border-color);
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+    z-index: 999999;
+    font-family: 'Segoe UI', Roboto, sans-serif;
+}
+
+#lumina-query-widget.lumina-visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+.lumina-widget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+    cursor: move;
+    /* Indicate draggable */
+}
+
+.lumina-widget-title {
+    font-weight: 700;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #111827;
+}
+
+/* Add Icon to title via CSS if needed, or assume HTML update */
+
+.lumina-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.lumina-theme-toggle {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.lumina-theme-toggle:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.lumina-close-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all 0.2s;
+}
+
+.lumina-close-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+#lumina-query-widget .lumina-widget-content {
+    padding: 16px;
+}
+
+.lumina-voice-controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    align-items: center;
+}
+
+#lumina-voice-select {
+    flex: 1;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    color: var(--text-primary);
+    padding: 8px 10px;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+#lumina-voice-select:hover {
+    border-color: var(--accent-primary);
+    background: var(--bg-primary);
+}
+
+#lumina-voice-select option {
+    background: #ffffff;
+    color: #374151;
+}
+
+.lumina-clone-btn,
+.lumina-upload-btn {
+    background: #F3F4F6;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    color: #4B5563;
+    padding: 6px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.lumina-clone-btn:hover,
+.lumina-upload-btn:hover {
+    background: #F59E0B;
+    border-color: #D97706;
+    color: white;
+}
+
+.lumina-clone-btn.cloned {
+    background: rgba(34, 197, 94, 0.1);
+    border-color: rgba(34, 197, 94, 0.3);
+    color: #4ade80;
+}
+
+.lumina-widget-body textarea {
+    width: 100%;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    color: var(--text-primary);
+    padding: 12px;
+    font-size: 14px;
+    resize: none;
+    outline: none;
+    margin-bottom: 0px;
+    transition: all 0.2s ease;
+}
+
+.lumina-widget-body textarea::placeholder {
+    color: var(--text-tertiary);
+}
+
+.lumina-widget-body textarea:focus {
+    border-color: var(--accent-primary);
+    background: var(--bg-primary);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+}
+
+.lumina-widget-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 15px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color);
+}
+
+.lumina-footer-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.lumina-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.lumina-checkbox input[type="checkbox"] {
+    display: none;
+}
+
+/* Toggle Switch */
+.lumina-toggle-switch {
+    position: relative;
+    width: 40px;
+    height: 22px;
+    background: #D1D5DB;
+    border-radius: 11px;
+    transition: background 0.3s;
+    cursor: pointer;
+}
+
+.lumina-checkbox input:checked+.lumina-toggle-switch {
+    background: #10B981;
+}
+
+.lumina-toggle-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.3s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.lumina-checkbox input:checked+.lumina-toggle-switch::after {
+    transform: translateX(18px);
+}
+
+/* Model Selector Dropdown */
+#lumina-model-select {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    padding: 6px 8px;
+    font-size: 11px;
+    outline: none;
+    cursor: pointer;
+    max-width: 120px;
+    transition: all 0.2s;
+}
+
+#lumina-model-select:hover {
+    border-color: var(--accent-primary);
+    background: var(--bg-primary);
+}
+
+.lumina-mic-btn {
+    background: transparent;
+    border: none;
+    color: #4B5563;
+    /* Dark Grey Icon */
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lumina-mic-btn:hover {
+    background: #F3F4F6;
+    color: #F59E0B;
+    /* Gold on hover */
+}
+
+.lumina-mic-btn.listening {
+    color: #EF4444;
+    animation: pulse 1.5s infinite;
+}
+
+#lumina-submit-btn {
+    background: var(--accent-gradient);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    padding: 8px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: var(--shadow-sm);
+}
+
+#lumina-submit-btn:hover:not(:disabled) {
+    background: var(--accent-secondary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+#lumina-submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+#lumina-submit-btn.loading {
+    position: relative;
+    color: transparent;
+}
+
+#lumina-submit-btn.loading::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 50%;
+    left: 50%;
+    margin-left: -8px;
+    margin-top: -8px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes success {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-5px);
+    }
+
+    75% {
+        transform: translateX(5px);
+    }
+}
+
+#lumina-submit-btn.success {
+    animation: success 0.5s ease;
+}
+
+#lumina-submit-btn.error {
+    animation: shake 0.5s ease;
+}
+
+.lumina-loading-text {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 8px;
+    text-align: center;
+    display: none;
+}
+
+.lumina-loading-text.visible {
+    display: block;
+}
+
+.lumina-widget-body {
+    padding: 20px;
+}
+
+.lumina-preview-section {
+    margin-bottom: 16px;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border-left: 3px solid #6366f1;
+}
+
+.lumina-preview-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.lumina-preview-content {
+    font-size: 13px;
+    color: #334155;
+    line-height: 1.5;
+    max-height: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lumina-input-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.lumina-prompt-input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 14px;
+    resize: none;
+    transition: border-color 0.2s;
+    font-family: inherit;
+}
+
+.lumina-prompt-input:focus {
+    outline: none;
+    border-color: #6366f1;
+}
+
+.lumina-prompt-input::placeholder {
+    color: #94a3b8;
+}
+
+.lumina-options {
+    display: flex;
+    gap: 16px;
+}
+
+.lumina-option {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #64748b;
+    cursor: pointer;
+}
+
+.lumina-option input[type="checkbox"] {
+    accent-color: #6366f1;
+    width: 14px;
+    height: 14px;
+}
+
+.lumina-submit-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.lumina-submit-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+.lumina-submit-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.lumina-btn-loader {
+    display: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.lumina-loading .lumina-btn-loader {
+    display: inline-block;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Audio Player */
+#lumina-audio-player {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 320px;
+    background: var(--bg-primary);
+    backdrop-filter: blur(20px);
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg), 0 0 0 1px var(--border-color);
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+    z-index: 999999;
+    font-family: 'Segoe UI', Roboto, sans-serif;
+}
+
+#lumina-audio-player.lumina-visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+.lumina-player-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: var(--accent-primary);
+    color: white;
+}
+
+.lumina-player-title {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.lumina-copy-text-btn,
+.lumina-toggle-text-btn,
+.lumina-player-close {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.lumina-copy-text-btn:hover,
+.lumina-toggle-text-btn:hover,
+.lumina-player-close:hover {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+.lumina-player-close {
+    font-size: 18px;
+}
+
+/* Text Display Section */
+.lumina-text-display {
+    max-height: 150px;
+    overflow-y: auto;
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.lumina-text-content {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.lumina-player-visualization {
+    padding: 20px;
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+#lumina-waveform-canvas {
+    width: 100%;
+    height: 60px;
+    border-radius: 8px;
+}
+
+.lumina-player-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+}
+
+.lumina-control-btn {
+    background: #f1f5f9;
+    border: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    transition: all 0.2s;
+}
+
+.lumina-control-btn:hover {
+    background: #e2e8f0;
+    color: #334155;
+}
+
+.lumina-play-btn {
+    background: #F59E0B;
+    /* Gold Play Button */
+    border: none;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+    transition: all 0.2s;
+}
+
+.lumina-play-btn:hover {
+    transform: scale(1.05);
+    background: #D97706;
+    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5);
+}
+
+.lumina-player-progress {
+    padding: 0 20px;
+}
+
+.lumina-progress-bar {
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.lumina-progress-fill {
+    width: 0%;
+    height: 100%;
+    background: #F59E0B;
+    /* Gold Progress */
+    border-radius: 3px;
+    transition: width 0.1s linear;
+}
+
+.lumina-time-display {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.lumina-player-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+}
+
+.lumina-speed-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.lumina-speed-label {
+    font-size: 12px;
+    color: #64748b;
+}
+
+.lumina-speed-btn {
+    background: #e2e8f0;
+    border: none;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.lumina-speed-btn.active {
+    background: #F59E0B;
+    color: white;
+}
+
+.lumina-download-btn {
+    background: #e2e8f0;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.lumina-download-btn:hover {
+    background: #cbd5e1;
+    color: #334155;
+}
+
+/* --- New Features Styling (Voice, Text, Markers) --- */
+
+/* 1. Voice Input */
+.lumina-input-container {
+    position: relative;
+    width: 100%;
+}
+
+.lumina-mic-btn {
+    position: absolute;
+    bottom: 20px;
+    right: 12px;
+    background: transparent;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.lumina-mic-btn:hover {
+    color: #6366f1;
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.lumina-mic-btn.listening {
+    color: #ef4444;
+    animation: pulse-red 1.5s infinite;
+}
+
+@keyframes pulse-red {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+    }
+
+    70% {
+        transform: scale(1.1);
+        box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    }
+}
+
+/* 2. Text Answer Display */
+.lumina-text-answer {
+    padding: 12px 20px;
+    max-height: 120px;
+    overflow-y: auto;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #334155;
+    background: rgba(255, 255, 255, 0.5);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.lumina-text-answer::-webkit-scrollbar {
+    width: 6px;
+}
+
+.lumina-text-answer::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 3px;
+}
+
+/* 3. History FAB (The "Flying Lightbulb") */
+#lumina-history-fab {
+    position: fixed;
+    bottom: 30px;
+    left: 30px;
+    /* LEFT aligned as requested */
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    border-radius: 50%;
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+    cursor: pointer;
+    z-index: 2147483645;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#lumina-history-fab:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5);
+}
+
+#lumina-history-fab.pulse {
+    animation: pulse-orange 0.5s ease-in-out;
+}
+
+@keyframes pulse-orange {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
+    }
+
+    50% {
+        transform: scale(1.2);
+        box-shadow: 0 0 0 10px rgba(245, 158, 11, 0);
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+    }
+}
+
+.lumina-fab-icon {
+    font-size: 20px;
+    pointer-events: none;
+    /* Let clicks pass to parent */
+}
+
+/* History Dropdown */
+.lumina-history-dropdown {
+    position: absolute;
+    bottom: 60px;
+    /* Above the FAB */
+    left: 0;
+    width: 300px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    padding: 0;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px) scale(0.95);
+    transform-origin: bottom left;
+    transition: all 0.2s cubic-bezier(0.165, 0.84, 0.44, 1);
+    display: flex;
+    flex-direction: column;
+    max-height: 400px;
+}
+
+#lumina-history-fab.open .lumina-history-dropdown {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+}
+
+.lumina-history-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+    font-size: 13px;
+    color: #334155;
+    background: #f8fafc;
+    border-radius: 12px 12px 0 0;
+}
+
+.lumina-history-list {
+    overflow-y: auto;
+    padding: 8px;
+    flex: 1;
+}
+
+.lumina-history-item {
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.1s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: #1e293b;
+}
+
+.lumina-history-item:hover {
+    background: rgba(245, 158, 11, 0.08);
+    /* slight orange tint */
+}
+
+.lumina-history-text {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-right: 8px;
+}
+
+.lumina-history-item strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lumina-history-time {
+    font-size: 10px;
+    color: #94a3b8;
+    font-weight: normal;
+}
+
+.lumina-clear-history,
+.lumina-history-delete {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+}
+
+.lumina-clear-history:hover,
+.lumina-history-delete:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.lumina-history-empty {
+    padding: 20px;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 13px;
+    font-style: italic;
+}
+
+/* Dark Mode Additions for New Features */
+@media (prefers-color-scheme: dark) {
+    .lumina-text-answer {
+        color: #e2e8f0;
+        background: rgba(30, 41, 59, 0.5);
+        border-bottom-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .lumina-marker-icon {
+        border-color: #1e293b;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+
+    #lumina-query-widget,
+    #lumina-audio-player {
+        background: rgba(30, 41, 59, 0.95);
+        color: #f1f5f9;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3),
+            0 0 0 1px rgba(255, 255, 255, 0.1);
+    }
+
+    .lumina-preview-section {
+        background: rgba(51, 65, 85, 0.5);
+    }
+
+    .lumina-preview-content {
+        color: #cbd5e1;
+    }
+
+    .lumina-prompt-input {
+        background: rgba(51, 65, 85, 0.5);
+        border-color: #475569;
+        color: #f1f5f9;
+    }
+
+    .lumina-option {
+        color: #94a3b8;
+    }
+
+    .lumina-control-btn {
+        background: #334155;
+        color: #94a3b8;
+    }
+
+    .lumina-control-btn:hover {
+        background: #475569;
+        color: #f1f5f9;
+    }
+
+    .lumina-player-footer,
+    .lumina-player-visualization {
+        background: rgba(30, 41, 59, 0.5);
+    }
+
+    .lumina-progress-bar {
+        background: #475569;
+    }
+
+    .lumina-speed-btn {
+        background: #334155;
+        color: #94a3b8;
+    }
+
+    .lumina-speed-btn.active {
+        background: #6366f1;
+        color: white;
+    }
+
+    .lumina-download-btn {
+        background: #334155;
+        color: #94a3b8;
+    }
+}

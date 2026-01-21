@@ -25,13 +25,59 @@ logger = logging.getLogger(__name__)
 # --- Provider Interface ---
 class LLMProvider(ABC):
     @abstractmethod
-    def generate_stream(self, prompt: str, images: List[str], api_key: str, tone: str) -> Iterator[str]:
+    def generate_stream(self, prompt: str, images: List[str], api_key: str, tone: str, history: List[Dict[str, str]] = None, custom_persona: str = None) -> Iterator[str]:
         """Yield content chunks from text prompt and list of base64 images"""
         pass
 
+# --- PROMPT MANAGEMENT ---
+def get_system_instructions(tone: str, custom_persona: str = None) -> str:
+    """Returns the tailored system prompt for the specific personality/tone."""
+    
+    base_tts_rules = (
+        "TTS OPTIMIZATION RULES:\n"
+        "- AVOID COMMAS where possible... use 'and' or 'so' to maintain flow.\n"
+        "- Write decimal numbers as text: write '4.9' as 'four point nine'.\n"
+        "- Do not use symbols like %, write 'percent'.\n"
+        "- Use ellipses (...) for natural pauses instead of commas.\n"
+        "- DO NOT use markdown lists or headers... speak in full sentences.\n"
+    )
+
+    if custom_persona and custom_persona.strip():
+        persona = f"You are acting as: {custom_persona.strip()}"
+    elif tone == "concise":
+        persona = (
+            "You are a fast, efficient News Anchor. "
+            "Your goal is to deliver the absolute core facts in the shortest time possible. "
+            "Do not give background info unless asked. Be direct, punchy, and rapid-fire."
+        )
+    elif tone == "casual":
+        persona = (
+            "You are a friendly Study Buddy. "
+            "Explain things simply using analogies and everyday language. "
+            "Sound supportive and conversational, but be direct. "
+            "Don't waste time with meta-commentary like 'Well, that's a new topic'. Just dive into the answer."
+        )
+    else: # Default / Helpful / Academic
+        persona = (
+            "You are an Expert Academic Tutor and Research Assistant. "
+            "Your goal is to provide a COMPLETE, COMPREHENSIVE explanation. "
+            "1. ALWAYS ANSWER THE QUESTION DIRECTLY FIRST. Then provide context. "
+            "2. Define complex terms if necessary. "
+            "3. Be structured but spoken naturally.\n"
+            "4. NEVER say 'It looks like we're changing topics'. Just answer the new question.\n"
+            "5. If explaining a calculation, state the result, then briefly explain the concept or formula used."
+        )
+
+    return (
+        f"You are Lumina. {persona}\n"
+        "You are speaking audio output. "
+        "DO NOT use markdown. DO NOT output meta-text like 'Here is the answer'. "
+        f"{base_tts_rules}"
+    )
+
 # --- Gemini Provider ---
 class GeminiProvider(LLMProvider):
-    def generate_stream(self, prompt: str, images: List[str], api_key: str, tone: str) -> Iterator[str]:
+    def generate_stream(self, prompt: str, images: List[str], api_key: str, tone: str, history: List[Dict[str, str]] = None, custom_persona: str = None) -> Iterator[str]:
         if not api_key:
             yield "Error: No Gemini API Key provided."
             return
@@ -41,7 +87,17 @@ class GeminiProvider(LLMProvider):
             # Switch to faster Lite model
             model = genai.GenerativeModel('gemini-2.5-flash-lite')
             
-            content_parts = [prompt + f"\n\nTone: {tone}"]
+            system_instruction = get_system_instructions(tone, custom_persona)
+            
+            # Format history for Gemini
+            history_text = ""
+            if history:
+                 for msg in history:
+                     role = "User" if msg['role'] == 'user' else "Lumina"
+                     history_text += f"{role}: {msg['content']}\n"
+                 history_text += "\nNow answer the following new question:\n"
+
+            content_parts = [system_instruction + "\n\n" + history_text + prompt + f"\n\nTone: {tone}"]
             
             for b64_str in images:
                 if not b64_str: continue
@@ -65,7 +121,7 @@ class GeminiProvider(LLMProvider):
 
 # --- OpenAI Provider ---
 class OpenAIProvider(LLMProvider):
-    def generate_stream(self, prompt: str, images: List[str], api_key: str, tone: str) -> Iterator[str]:
+    def generate_stream(self, prompt: str, images: List[str], api_key: str, tone: str, history: List[Dict[str, str]] = None, custom_persona: str = None) -> Iterator[str]:
         if not api_key:
             yield "Error: No OpenAI API Key provided."
             return
@@ -74,7 +130,13 @@ class OpenAIProvider(LLMProvider):
             from openai import OpenAI
             client = OpenAI(api_key=api_key)
             
-            messages = []
+            system_instruction = get_system_instructions(tone, custom_persona)
+            
+            messages = [{"role": "system", "content": system_instruction}]
+            
+            if history:
+                messages.extend(history)
+                
             user_content = [{"type": "text", "text": prompt + f"\n\nTone: {tone}"}]
             
             for b64_str in images:
@@ -105,7 +167,7 @@ class OpenAIProvider(LLMProvider):
 
 # --- Groq Provider ---
 class GroqProvider(LLMProvider):
-    def generate_stream(self, prompt: str, images: List[str], api_key: str, tone: str) -> Iterator[str]:
+    def generate_stream(self, prompt: str, images: List[str], api_key: str, tone: str, history: List[Dict[str, str]] = None, custom_persona: str = None) -> Iterator[str]:
         if not api_key:
             yield "Error: No Groq API Key provided."
             return
@@ -130,24 +192,28 @@ class GroqProvider(LLMProvider):
             # We will ignore images for 8b-instant or append explanation.
             
             final_text_prompt = prompt + f"\n\nTone: {tone}"
-            if images:
-                 # STRICTLY ignore image data for Llama 3.1 8B (Text Only)
-                 # We just append a context note so the LLM knows why it can't see them.
-                 final_text_prompt += "\n\n[System Note: The user provided images, but this specific model (Llama 3.1 8B) is text-only and cannot see them. Answer based on the text context provided above.]"
+            final_text_prompt = prompt + f"\n\nTone: {tone}"
+            
+            # Smart Handling for Text-Only Model
+            if images and "analyze the VISUAL content" in prompt:
+                 # CASE 1: User wants visual analysis (No text selected) -> FAIL GRACEFULLY
+                 final_text_prompt = (
+                     "SYSTEM NOTICE: The user attempting to use 'Vision Mode' (Screenshots) with a Text-Only Model (Llama 3.1 8B).\n"
+                     "You CANNOT see the screenshots.\n"
+                     "Please reply with this message (or similar): 'I cannot see screenshots in this mode. Please SELECT the text on the page you want me to explain, and I will be happy to help!'\n"
+                     "Do not apologize for being an AI. Just state the requirement clearly."
+                 )
+            elif images:
+                # CASE 2: User selected text BUT "Include Screenshot" was left ON -> IGNORE IMAGES, PROCEED
+                final_text_prompt += "\n\n[System Note: Images were provided but this model is text-only. The user HAS selected text above, so simply ignore the images and answer based on the SELECTED TEXT.]"
 
-            system_instruction = (
-                "You are Lumina, a helpful audio assistant. "
-                "You are speaking directly to the user via TTS. "
-                "DO NOT use markdown formatting (no bold, no italics, no lists). "
-                "DO NOT output meta-commentary like 'I can help with that' or 'Here is the answer'. "
-                "JUST ANSWER THE QUESTION directly and concisely. "
-                "Use natural sentence structures suitable for speech."
-                "NATURAL RHYTHM STRATEGY: Use ellipses (...) for thoughtful pauses instead of commas. "
-                "Avoid using commas where possible, as they cause robotic stops. "
-                "Use connector words like 'and', 'so', 'but' to maintain flow."
-            )
+            system_instruction = get_system_instructions(tone, custom_persona)
 
             messages.append({"role": "system", "content": system_instruction})
+            
+            if history:
+                messages.extend(history)
+
             messages.append({"role": "user", "content": final_text_prompt})
             
             # API Call (No images in payload)
@@ -169,7 +235,7 @@ class GroqProvider(LLMProvider):
 
 # --- Claude Provider ---
 class ClaudeProvider(LLMProvider):
-    def generate_stream(self, prompt: str, images: List[str], api_key: str, tone: str) -> Iterator[str]:
+    def generate_stream(self, prompt: str, images: List[str], api_key: str, tone: str, history: List[Dict[str, str]] = None, custom_persona: str = None) -> Iterator[str]:
         if not api_key:
             yield "Error: No Claude API Key provided."
             return
@@ -178,8 +244,19 @@ class ClaudeProvider(LLMProvider):
             import anthropic
             client = anthropic.Anthropic(api_key=api_key)
             
-            messages = []
-            content_list = [{"type": "text", "text": prompt + f"\n\nTone: {tone}"}]
+            system_instruction = get_system_instructions(tone, custom_persona)
+            
+            messages = [{"role": "system", "content": system_instruction}]
+            if history:
+                # Claude expects clean alternating roles. 
+                # Simplification: Append history as text to the first user message for stability
+                history_text = "\n\nConversation History:\n"
+                for msg in history:
+                     role = "User" if msg['role'] == 'user' else "Lumina"
+                     history_text += f"{role}: {msg['content']}\n"
+                content_list = [{"type": "text", "text": history_text + "\n" + prompt + f"\n\nTone: {tone}"}]
+            else:
+                 content_list = [{"type": "text", "text": prompt + f"\n\nTone: {tone}"}]
             
             for b64_str in images:
                 if "," in b64_str: b64_str = b64_str.split(",", 1)[1]
@@ -228,7 +305,9 @@ class LLMHandler:
         screenshots: Optional[list[str]] = None,
         api_key: Optional[str] = None,
         provider: str = "gemini",
-        tone: str = "helpful"
+        tone: str = "helpful",
+        history: List[Dict[str, str]] = None,
+        custom_persona: str = None
     ) -> Iterator[str]:
         
         # 1. Normalize Images
@@ -238,18 +317,46 @@ class LLMHandler:
         
         # 2. Prepare Prompt
         if "No text selected" in text or not text.strip():
-            final_prompt = (
-                "I am providing you with screenshots of a webpage and a user's question about them.\n"
-                "The user did not select specific text, so please analyze the VISUAL content of the screenshots (headers, tables, images, text) to answer.\n"
-                "If the screenshots contain a document or table, read the visible content carefully.\n\n"
-                f"USER QUESTION: {prompt}\n\n"
-            )
+            # CASE A: No Text Selection
+            
+            if not images:
+                # SUB-CASE: No Images either -> Pure Chat / General Knowledge
+                if history:
+                    final_prompt = f"USER FOLLOW-UP QUESTION: {prompt}\n\n"
+                else:
+                    final_prompt = (
+                        "The user is asking a general question without specific context (no text selected, no visible screen).\n"
+                        "Please answer the question to the best of your ability.\n\n"
+                        f"USER QUESTION: {prompt}\n\n"
+                    )
+            else:
+                # SUB-CASE: Has Images -> Visual Analysis
+                if history:
+                    final_prompt = (
+                        "REFERENCE VISUAL CONTEXT (User previously viewed these screenshots):\n"
+                        "Please answer the user's follow-up question below, using the visual context if relevant.\n\n"
+                        f"USER FOLLOW-UP QUESTION: {prompt}\n\n"
+                    )
+                else:
+                    final_prompt = (
+                        "I am providing you with screenshots of a webpage and a user's question about them.\n"
+                        "The user did not select specific text, so please analyze the VISUAL content of the screenshots (headers, tables, images, text) to answer.\n"
+                        "If the screenshots contain a document or table, read the visible content carefully.\n\n"
+                        f"USER QUESTION: {prompt}\n\n"
+                    )
         else:
-            final_prompt = (
-                f"I am providing you with text selected from a webpage and a user's question about it.\n\n"
-                f"SELECTED TEXT:\n{text}\n\n"
-                f"USER QUESTION: {prompt}\n\n"
-            )
+            # CASE B: Text Selected (Process as normal)
+            if history:
+                 final_prompt = (
+                    f"REFERENCE CONTEXT (User is reading this text):\n{text}\n\n"
+                    f"USER FOLLOW-UP QUESTION: {prompt}\n\n"
+                )
+            else:
+                final_prompt = (
+                    f"I am providing you with text selected from a webpage and a user's question about it.\n\n"
+                    f"SELECTED TEXT:\n{text}\n\n"
+                    f"USER QUESTION: {prompt}\n\n"
+                )
         
         final_prompt += (
             f"\n\nSYSTEM INSTRUCTIONS FOR AUDIO OUTPUT:\n"
@@ -273,4 +380,4 @@ class LLMHandler:
             return
 
         # 5. Execute Stream
-        yield from handler.generate_stream(final_prompt, images, key_to_use, tone)
+        yield from handler.generate_stream(final_prompt, images, key_to_use, tone, history, custom_persona)

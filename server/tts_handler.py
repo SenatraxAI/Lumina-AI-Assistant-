@@ -32,9 +32,9 @@ class TTSHandler:
             try:
                 from pocket_tts import TTSModel
                 # Load model
-                # Optimize speed: Reduce lsd_decode_steps (default is usually 20-30). 
-                # 20 is the Natural Sweet Spot (Good quality, good speed).
-                self.model = TTSModel.load_model(lsd_decode_steps=20)
+                # Optimize quality: Using 15 steps for speed (User Request)
+                # (Lower steps = faster generation, slightly lower quality)
+                self.model = TTSModel.load_model(lsd_decode_steps=15)
                 self.sample_rate = getattr(self.model, 'sample_rate', 24000)
                 
                 # Immediate CUDA Move (Cache Everything)
@@ -47,15 +47,20 @@ class TTSHandler:
                 
                 self.is_available = True
                 
-                # Pre-Cache Standard Voices (Will now be on GPU if applicable)
+                # Pre-Cache Standard Voices using Safe Loader
                 self.voice_cache = {}
-                standard_voices = ["alba", "marius", "jean", "sofia", "velvet"]
-                logger.info(f"Pre-caching standard voices on {self.current_device}...")
+                standard_voices = [
+                    "alba", "marius", "javert", "jean", 
+                    "fantine", "cosette", "eponine", "azelma"
+                ]
+                logger.info(f"Pre-caching voices (safe mode)...")
+                
                 for v in standard_voices:
                     try:
-                        self.voice_cache[v] = self.model.get_state_for_audio_prompt(v)
-                    except:
-                        pass # specific voice might not exist in this version
+                        self._load_voice_safe(v)
+                    except Exception as e:
+                        logger.warning(f"Failed to cache voice '{v}': {e}")
+                        pass
                         
                 logger.info(f"Pocket TTS (Full) initialized at {self.sample_rate}Hz on {self.current_device} with {len(self.voice_cache)} cached voices.")
             except Exception as e:
@@ -66,6 +71,68 @@ class TTSHandler:
             logger.error(f"Failed to initialize Pocket TTS: {e}")
             self.is_available = False
     
+    def generate_speech(
+        self,
+        text: str,
+        voice: str = "alba",
+        use_cuda: bool = False
+    ) -> np.ndarray:
+        """
+        Generate speech from text
+        """
+        if not self.is_available:
+            return self._generate_mock_audio()
+
+        # Handle Device Switching
+        target_device = 'cpu'
+        if use_cuda:
+            if torch.cuda.is_available():
+                target_device = 'cuda'
+                logger.info("Using CUDA acceleration for TTS")
+            else:
+                logger.warning("CUDA requested but not available. Using CPU.")
+
+    def _load_voice_safe(self, voice: str) -> dict:
+        """
+        Safely load voice state, handling CUDA/CPU transitions to avoid
+        RuntimeError: Expected all tensors to be on the same device.
+        """
+        if hasattr(self, 'voice_cache') and voice in self.voice_cache:
+            return self.voice_cache[voice]
+            
+        logger.info(f"Loading new voice state for '{voice}'...")
+        
+        # KEY FIX: Force CPU for the loading step to avoid prompt tensor mismatch
+        original_device = self.current_device
+        if original_device == 'cuda':
+             self.model.to('cpu')
+             self.current_device = 'cpu'
+             
+        try:
+             state = self.model.get_state_for_audio_prompt(voice)
+        except Exception as e:
+             # Try to restore before re-raising
+             if original_device == 'cuda':
+                 self.model.to('cuda')
+                 self.current_device = 'cuda'
+             raise e
+
+        # If we were on CUDA, move everything back
+        if original_device == 'cuda':
+             self.model.to('cuda')
+             self.current_device = 'cuda'
+             
+             # Move state tensors to CUDA too!
+             for key, val in state.items():
+                 if isinstance(val, torch.Tensor):
+                     state[key] = val.to('cuda')
+        
+        # Cache it
+        if hasattr(self, 'voice_cache'):
+            self.voice_cache[voice] = state
+            
+        return state
+
     def generate_speech(
         self,
         text: str,
@@ -101,58 +168,65 @@ class TTSHandler:
             except Exception as e:
                 logger.error(f"Failed to move model to {target_device}: {e}")
         
-        # Limit text length (CPU has 32GB+ RAM likely, safe for long texts)
+        # Preprocess text
+        import re
+        text = re.sub(r'\.{2,}', '.', text)
+        text = re.sub(r',{2,}', ',', text)
+        text = re.sub(r'\s+', ' ', text)
+        text = text.strip()
+        
         if len(text) > 5000:
-            logger.info("Truncating text to 5000 chars (CPU Safety Limit)")
+            logger.info("Truncating text to 5000 chars")
             text = text[:5000]
 
         # Generate (Standard No-Clone)
         logger.info(f"Generating speech with voice: {voice}")
         
         try:
-             # generate_audio(model_state, text)
-             
-             # 1. Get Speaker State (Voice Selection)
+             # 1. Get Speaker State (Safe Load)
              try:
-                 # Check Cache First
-                 if hasattr(self, 'voice_cache') and voice in self.voice_cache:
-                     state = self.voice_cache[voice]
-                 else:
-                    # Try to load and cache
-                    state = self.model.get_state_for_audio_prompt(voice)
-                    if hasattr(self, 'voice_cache'):
-                        self.voice_cache[voice] = state
+                 state = self._load_voice_safe(voice)
              except Exception:
-                 # Fallback to default/empty state if voice not found
-                 logger.warning(f"Voice '{voice}' not found, using default.")
-                 state = {}
+                 # Fallback
+                 logger.warning(f"Voice '{voice}' loading failed, trying fallback to 'alba'...")
+                 try:
+                     state = self._load_voice_safe("alba")
+                 except Exception as e:
+                     logger.error(f"Critical: Fallback voice 'alba' also failed: {e}")
+                     raise
 
-             # 2. Generate Audio with conditioned state
+             # 2. Generate Audio
              try:
                  audio_out = self.model.generate_audio(state, text)
              except Exception as e:
-                 logger.error(f"Generation with voice '{voice}' failed: {e}")
-                 logger.info("Falling back to default voice and attempting CPU generation...")
+                 logger.error(f"Generation with voice '{voice}' failed on {self.current_device}: {e}")
                  
-                 # Emergency Fallback: If CUDA failed (unknown error), try CPU
+                 # Emergency Fallback to CPU
+                 logger.info("Emergency Fallback: Switching entire pipeline to CPU...")
                  try:
-                     state = {}
-                     if self.current_device == 'cuda':
-                         logger.warning("CUDA Instability Detected. Moving model to CPU for stability.")
-                         self.model.to('cpu')
-                         self.current_device = 'cpu'
-                         
-                     audio_out = self.model.generate_audio(state, text)
+                     self.model.to('cpu')
+                     self.current_device = 'cpu'
+                     
+                     # Need to ensure state is on CPU now
+                     cpu_state = {}
+                     for k, v in state.items():
+                         if isinstance(v, torch.Tensor):
+                             cpu_state[k] = v.to('cpu')
+                         else:
+                             cpu_state[k] = v
+                             
+                     audio_out = self.model.generate_audio(cpu_state, text)
                      
                  except Exception as final_e:
                     logger.error(f"Critical TTS Failure on CPU: {final_e}")
                     raise final_e
              
-             # Handle tuple return if any
+             # Handle output format
              if isinstance(audio_out, tuple):
                  audio = audio_out[0]
              else:
                  audio = audio_out
+             
              
              # Normalize to 16-bit PCM
              if hasattr(audio, 'cpu'):
