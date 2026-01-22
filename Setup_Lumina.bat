@@ -51,7 +51,12 @@ echo [PROGRESS] [#####               ] 25%%
 
 :: 🎯 v4.0: Get Extension ID from User
 echo.
-set /p EXT_ID="Enter your Lumina Extension ID (from chrome://extensions): "
+echo [!] To link your extension to this engine:
+echo     1. Open chrome://extensions
+echo     2. Load Unpacked "extension" folder (if you haven't yet)
+echo     3. Copy the ID it generates
+echo.
+set /p EXT_ID="Enter your Lumina Extension ID: "
 if "!EXT_ID!"=="" (
     echo [WARNING] No ID entered. Using default placeholder...
     set "EXT_ID=hfopjgfdmfckmjkhghjdfmlhfmfmclhf"
@@ -63,9 +68,12 @@ set "BRIDGE_BAT_PATH=%~dp0server\bridge.bat"
 
 echo [PROGRESS] [##########          ] 50%%
 
+:: Regenerate manifest from template to ensure clean state
+copy /y "server\com.lumina.bridge.json.template" "server\com.lumina.bridge.json" >nul
+
 :: Update the path inside the json manifest to be absolute (Crucial for Chrome)
 set "ESCAPED_PATH=!BRIDGE_BAT_PATH:\=\\!"
-powershell -Command "(gc 'server\com.lumina.bridge.json') -replace 'bridge.bat', '!ESCAPED_PATH!' -replace 'hfopjgfdmfckmjkhghjdfmlhfmfmclhf', '!EXT_ID!' | Out-File -encoding utf8 'server\com.lumina.bridge.json'"
+powershell -Command "(gc 'server\com.lumina.bridge.json') -replace 'PLACEHOLDER_BRIDGE_PATH', '!ESCAPED_PATH!' -replace 'PLACEHOLDER_EXTENSION_ID', '!EXT_ID!' | Out-File -encoding utf8 'server\com.lumina.bridge.json'"
 
 echo [PROGRESS] [###############     ] 75%%
 
@@ -78,12 +86,14 @@ echo ========================================
 echo   🎉 SETUP COMPLETE!
 echo ========================================
 echo.
-echo 1. Open Chrome and go to: chrome://extensions
-echo 2. Enable "Developer Mode" (top-right).
-echo 3. Click "Load Unpacked" and select the 'extension' folder.
-echo 4. Click the Lumina icon to start your engine!
+echo Your engine is now "bridged" to ID: !EXT_ID!
 echo.
-echo Press any key to finish and open Chrome...
+echo FINAL STEP TO START:
+echo 1. Click the Lumina icon (🎓) in your Chrome toolbar.
+echo 2. Click the "Start Engine" toggle in the menu.
+echo 3. It should turn Green (Engine Active) in ~3 seconds.
+echo.
+echo Press any key to finish...
 pause >nul
-start chrome "chrome://extensions"
 exit
+

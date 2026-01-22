@@ -11,8 +11,14 @@ APP_PATH = os.path.join(os.path.dirname(__file__), "app.py")
 VENV_PYTHON = os.path.join(os.path.dirname(__file__), "venv", "Scripts", "pythonw.exe")
 
 # If venv doesn't exist yet, fallback to system pythonw
-if not os.path.exists(VENV_PYTHON):
+if os.path.exists(VENV_PYTHON):
+    # Log startup for debugging
+    with open(os.path.join(os.path.dirname(__file__), "bridge.log"), "a") as f:
+        f.write(f"Bridge started with VENV: {VENV_PYTHON}\n")
+else:
     VENV_PYTHON = "pythonw.exe"
+    with open(os.path.join(os.path.dirname(__file__), "bridge.log"), "a") as f:
+        f.write(f"Bridge fallback to global pythonw\n")
 
 def get_message():
     raw_length = sys.stdin.buffer.read(4)
