@@ -1,4 +1,5 @@
 @echo off
+:: Lumina AI One-Click Setup - v4.0.1
 setlocal enabledelayedexpansion
 title Lumina AI - One-Click Setup 🎓
 
