@@ -8,17 +8,17 @@ import signal
 
 # Path to the real app
 APP_PATH = os.path.join(os.path.dirname(__file__), "app.py")
-VENV_PYTHON = os.path.join(os.path.dirname(__file__), "venv", "Scripts", "pythonw.exe")
+VENV_PYTHON = os.path.join(os.path.dirname(__file__), "venv", "Scripts", "python.exe")
 
-# If venv doesn't exist yet, fallback to system pythonw
+# If venv doesn't exist yet, fallback to system python
 if os.path.exists(VENV_PYTHON):
     # Log startup for debugging
     with open(os.path.join(os.path.dirname(__file__), "bridge.log"), "a") as f:
         f.write(f"Bridge started with VENV: {VENV_PYTHON}\n")
 else:
-    VENV_PYTHON = "pythonw.exe"
+    VENV_PYTHON = "python.exe"
     with open(os.path.join(os.path.dirname(__file__), "bridge.log"), "a") as f:
-        f.write(f"Bridge fallback to global pythonw\n")
+        f.write(f"Bridge fallback to global python\n")
 
 def get_message():
     raw_length = sys.stdin.buffer.read(4)
@@ -46,9 +46,9 @@ def main():
 
         if command == "START":
             if backend_process is None or backend_process.poll() is not None:
-                # Use pythonw.exe for INVISIBLE operation
+                # Use python.exe and CREATE_NEW_CONSOLE to show debug window
                 backend_process = subprocess.Popen([VENV_PYTHON, APP_PATH], 
-                                                 creationflags=subprocess.CREATE_NO_WINDOW)
+                                                 creationflags=subprocess.CREATE_NEW_CONSOLE)
                 send_message({"status": "STARTED", "pid": backend_process.pid})
             else:
                 send_message({"status": "ALREADY_RUNNING"})
