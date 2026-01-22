@@ -65,15 +65,24 @@ if "!EXT_ID!"=="" (
 :: Get absolute path for the manifest
 set "MANIFEST_PATH=%~dp0server\com.lumina.bridge.json"
 set "BRIDGE_BAT_PATH=%~dp0server\bridge.bat"
+set "PYTHON_EXE_PATH=%~dp0server\venv\Scripts\python.exe"
+
+:: Fallback if venv python isn't found (unlikely)
+if not exist "!PYTHON_EXE_PATH!" set "PYTHON_EXE_PATH=python.exe"
 
 echo [PROGRESS] [##########          ] 50%%
+
+:: Regenerate bridge.bat from template to ensure absolute path
+copy /y "server\bridge.bat.template" "server\bridge.bat" >nul
+set "ESCAPED_PYTHON=!PYTHON_EXE_PATH:\=\\!"
+powershell -Command "(gc 'server\bridge.bat') -replace 'PLACEHOLDER_PYTHON_PATH', '!ESCAPED_PYTHON!' | Out-File -encoding utf8 'server\bridge.bat'"
 
 :: Regenerate manifest from template to ensure clean state
 copy /y "server\com.lumina.bridge.json.template" "server\com.lumina.bridge.json" >nul
 
 :: Update the path inside the json manifest to be absolute (Crucial for Chrome)
-set "ESCAPED_PATH=!BRIDGE_BAT_PATH:\=\\!"
-powershell -Command "(gc 'server\com.lumina.bridge.json') -replace 'PLACEHOLDER_BRIDGE_PATH', '!ESCAPED_PATH!' -replace 'PLACEHOLDER_EXTENSION_ID', '!EXT_ID!' | Out-File -encoding utf8 'server\com.lumina.bridge.json'"
+set "ESCAPED_BRIDGE=!BRIDGE_BAT_PATH:\=\\!"
+powershell -Command "(gc 'server\com.lumina.bridge.json') -replace 'PLACEHOLDER_BRIDGE_PATH', '!ESCAPED_BRIDGE!' -replace 'PLACEHOLDER_EXTENSION_ID', '!EXT_ID!' | Out-File -encoding utf8 'server\com.lumina.bridge.json'"
 
 echo [PROGRESS] [###############     ] 75%%
 

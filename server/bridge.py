@@ -35,35 +35,39 @@ def send_message(message):
     sys.stdout.buffer.flush()
 
 def main():
-    backend_process = None
+    try:
+        backend_process = None
 
-    while True:
-        msg = get_message()
-        if msg is None:
-            break
+        while True:
+            msg = get_message()
+            if msg is None:
+                break
 
-        command = msg.get("command")
+            command = msg.get("command")
 
-        if command == "START":
-            if backend_process is None or backend_process.poll() is not None:
-                # Use python.exe and CREATE_NEW_CONSOLE to show debug window
-                backend_process = subprocess.Popen([VENV_PYTHON, APP_PATH], 
-                                                 creationflags=subprocess.CREATE_NEW_CONSOLE)
-                send_message({"status": "STARTED", "pid": backend_process.pid})
-            else:
-                send_message({"status": "ALREADY_RUNNING"})
+            if command == "START":
+                if backend_process is None or backend_process.poll() is not None:
+                    # Use python.exe and CREATE_NEW_CONSOLE to show debug window
+                    backend_process = subprocess.Popen([VENV_PYTHON, APP_PATH], 
+                                                     creationflags=subprocess.CREATE_NEW_CONSOLE)
+                    send_message({"status": "STARTED", "pid": backend_process.pid})
+                else:
+                    send_message({"status": "ALREADY_RUNNING"})
 
-        elif command == "STOP":
-            if backend_process and backend_process.poll() is None:
-                backend_process.terminate()
-                backend_process = None
-                send_message({"status": "STOPPED"})
-            else:
-                send_message({"status": "NOT_RUNNING"})
+            elif command == "STOP":
+                if backend_process and backend_process.poll() is None:
+                    backend_process.terminate()
+                    backend_process = None
+                    send_message({"status": "STOPPED"})
+                else:
+                    send_message({"status": "NOT_RUNNING"})
 
-        elif command == "STATUS":
-            is_running = backend_process is not None and backend_process.poll() is None
-            send_message({"status": "RUNNING" if is_running else "STOPPED"})
+            elif command == "STATUS":
+                is_running = backend_process is not None and backend_process.poll() is None
+                send_message({"status": "RUNNING" if is_running else "STOPPED"})
+    except Exception as e:
+        with open(os.path.join(os.path.dirname(__file__), "bridge.log"), "a") as f:
+            f.write(f"BRIDGE_CRITICAL_ERROR: {str(e)}\n")
 
 if __name__ == "__main__":
     main()

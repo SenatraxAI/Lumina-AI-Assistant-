@@ -1,0 +1,2 @@
+@echo off
+"PLACEHOLDER_PYTHON_PATH" "%~dp0bridge.py" %*
