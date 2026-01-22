@@ -177,13 +177,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    toggleEngineBtn.addEventListener('click', () => {
+    toggleEngineBtn.addEventListener('click', async () => {
         const isRunning = engineStatusEl.classList.contains('running');
         const command = isRunning ? 'STOP' : 'START';
 
         engineStatusEl.className = 'status-indicator starting';
         engineStatusEl.innerText = isRunning ? '🟡 Stopping...' : '🟡 Starting...';
         toggleEngineBtn.disabled = true;
+
+        // 🎯 v4.6.1: Force Server Shutdown via API if active
+        if (isRunning) {
+            try {
+                const DEFAULT_URL = 'http://localhost:8080';
+                let serverUrl = serverUrlInput.value || DEFAULT_URL;
+                if (serverUrl.endsWith('/')) serverUrl = serverUrl.slice(0, -1);
+
+                // Fire and forget shutdown signal
+                fetch(`${serverUrl}/api/shutdown`, { method: 'POST' }).catch(() => { });
+            } catch (e) { }
+        }
 
         chrome.runtime.sendMessage({ action: 'controlBackend', command: command }, (response) => {
             toggleEngineBtn.disabled = false;

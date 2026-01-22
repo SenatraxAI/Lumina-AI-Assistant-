@@ -56,12 +56,21 @@ def main():
                     send_message({"status": "ALREADY_RUNNING"})
 
             elif command == "STOP":
+                # 🎯 v4.6.1: Try API shutdown first as it's more reliable for manual runs
+                try:
+                    import urllib.request
+                    req = urllib.request.Request("http://localhost:8080/api/shutdown", method="POST")
+                    with urllib.request.urlopen(req, timeout=1) as response:
+                        pass
+                except:
+                    pass
+
                 if backend_process and backend_process.poll() is None:
                     backend_process.terminate()
                     backend_process = None
                     send_message({"status": "STOPPED"})
                 else:
-                    send_message({"status": "NOT_RUNNING"})
+                    send_message({"status": "STOPPED"}) # Always confirm stopped if we attempted API
 
             elif command == "STATUS":
                 is_running = backend_process is not None and backend_process.poll() is None

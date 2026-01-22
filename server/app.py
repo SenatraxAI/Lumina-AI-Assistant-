@@ -214,6 +214,19 @@ async def health_check():
         "device": "cuda" if torch.cuda.is_available() else "cpu"
     }
 
+@app.post("/api/shutdown")
+async def shutdown():
+    logger.info("Shutdown requested via API...")
+    # Delay allows the response to reach the client before death
+    def kill_process():
+        time.sleep(1)
+        import signal
+        os.kill(os.getpid(), signal.SIGINT)
+        
+    import threading
+    threading.Thread(target=kill_process, daemon=True).start()
+    return {"status": "SHUTTING_DOWN"}
+
 async def ensure_audio_cue():
     """Generates friendly startup cues if they don't exist."""
     # 1. Loading Cue
