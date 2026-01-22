@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Lumina Engine
+server/audio/*.wav
+!server/audio/cue.wav
+!server/audio/ready.wav
+
+# Chrome Extension
+.DS_Store
+*.log
