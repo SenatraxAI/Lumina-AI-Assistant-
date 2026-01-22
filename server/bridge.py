@@ -47,8 +47,9 @@ def main():
 
             if command == "START":
                 if backend_process is None or backend_process.poll() is not None:
-                    # Use python.exe and CREATE_NEW_CONSOLE to show debug window
-                    backend_process = subprocess.Popen([VENV_PYTHON, APP_PATH], 
+                    # Use cmd /k and python.exe to show a persistent debug window
+                    # This ensures the window stays open even if the server crashes
+                    backend_process = subprocess.Popen(["cmd", "/k", f'"{VENV_PYTHON}" "{APP_PATH}"'], 
                                                      creationflags=subprocess.CREATE_NEW_CONSOLE)
                     send_message({"status": "STARTED", "pid": backend_process.pid})
                 else:

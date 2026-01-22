@@ -91,16 +91,16 @@ REG ADD "HKEY_CURRENT_USER\Software\Google\Chrome\NativeMessagingHosts\com.lumin
 
 echo [PROGRESS] [####################] 100%%
 echo.
-echo ========================================
-echo   🎉 SETUP COMPLETE!
-echo ========================================
-echo.
-echo Your engine is now "bridged" to ID: !EXT_ID!
+echo [!] CRITICAL STEP:
+echo     To see the new 8 voices and link the bridge:
+echo     1. Go to chrome://extensions
+echo     2. Click the RELOAD icon (circular arrow) on the Lumina card.
 echo.
 echo FINAL STEP TO START:
 echo 1. Click the Lumina icon (🎓) in your Chrome toolbar.
 echo 2. Click the "Start Engine" toggle in the menu.
-echo 3. It should turn Green (Engine Active) in ~3 seconds.
+echo 3. A DEBUG WINDOW WILL APPEAR - KEEP IT OPEN!
+echo 4. It should turn Green (Engine Active) in ~3 seconds.
 echo.
 echo Press any key to finish...
 pause >nul

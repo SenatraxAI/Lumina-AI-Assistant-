@@ -623,5 +623,13 @@ async def get_audio(filename: str):
     return FileResponse(filepath, media_type="audio/wav")
 
 if __name__ == "__main__":
+    print("\n" + "="*50)
+    print("      LUMINA AI ENGINE: EXTENSIVE DEBUG MODE")
+    print("="*50)
+    print(f" VERSION: 4.5.3")
+    print(f" ADDRESS: http://localhost:8080")
+    print(f" DEVICE : {'CUDA (GPU)' if torch.cuda.is_available() else 'CPU'}")
+    print("="*50 + "\n")
+    
     # Disable reload to avoid infinite restart loops when writing audio files
     uvicorn.run("app:app", host="0.0.0.0", port=8080, reload=False)
