@@ -133,6 +133,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 4. v4.0 Engine Control Logic
     async function updateEngineStatus() {
+        const DEFAULT_URL = 'http://localhost:8080';
+        let serverUrl = serverUrlInput.value || DEFAULT_URL;
+        if (serverUrl.endsWith('/')) serverUrl = serverUrl.slice(0, -1);
+
+        // 🎯 v4.6 Hybrid Check: Try HTTP Ping first
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 1000);
+            const healthRes = await fetch(`${serverUrl}/api/health`, { signal: controller.signal });
+            clearTimeout(timeoutId);
+
+            if (healthRes.ok) {
+                engineStatusEl.className = 'status-indicator running';
+                engineStatusEl.innerText = '🟢 Engine Active';
+                toggleEngineBtn.innerText = 'Stop Engine';
+                toggleEngineBtn.classList.add('active');
+                return; // Early exit - it's running!
+            }
+        } catch (e) {
+            // Server not reachable yet, proceed to check Bridge
+        }
+
+        // 🎯 Bridge Fallback: Check if bridge is actually starting/stopped
         chrome.runtime.sendMessage({ action: 'controlBackend', command: 'STATUS' }, (response) => {
             if (chrome.runtime.lastError || !response || response.status === 'ERROR') {
                 engineStatusEl.className = 'status-indicator stopped';
@@ -143,10 +166,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             if (response.status === 'RUNNING') {
-                engineStatusEl.className = 'status-indicator running';
-                engineStatusEl.innerText = '🟢 Engine Active';
-                toggleEngineBtn.innerText = 'Stop Engine';
-                toggleEngineBtn.classList.add('active');
+                engineStatusEl.className = 'status-indicator starting';
+                engineStatusEl.innerText = '🟡 Starting...';
             } else {
                 engineStatusEl.className = 'status-indicator stopped';
                 engineStatusEl.innerText = '🔴 Stopped';

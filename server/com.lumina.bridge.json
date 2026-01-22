@@ -4,6 +4,6 @@
   "path": "C:\\Users\\Asus\\OneDrive\\Documents\\lumina\\server\\bridge.bat",
   "type": "stdio",
   "allowed_origins": [
-    "chrome-extension:// ipakodjjcahgfniaafinpbhfmllmggkp/"
+    "chrome-extension://ipakodjjcahgfniaafinpbhfmllmggkp/"
   ]
 }

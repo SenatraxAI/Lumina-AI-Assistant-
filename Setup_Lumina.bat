@@ -1,7 +1,7 @@
 @echo off
-:: Lumina AI One-Click Setup - v4.5.0
+:: Lumina AI Universal Setup - v4.6
+title Lumina AI - Setup Wizard 🎓
 setlocal enabledelayedexpansion
-title Lumina AI - One-Click Setup 🎓
 
 echo ========================================
 echo   LUMINA AI: PREMIUM SETUP ASSISTANT
@@ -11,98 +11,66 @@ echo.
 :: 1. Check Python
 python --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] Python is not installed!
-    echo Please download it from: https://www.python.org/downloads/
-    pause
-    exit /b
+    echo [ERROR] Python not found. install from: https://www.python.org/
+    pause & exit /b
 )
 
-:: 2. Setup Venv
+:: 2. Virtual Env
 if not exist "server\venv" (
-    echo [1/3] Initializing Virtual Environment...
-    echo [PROGRESS] [##########          ] 50%%
+    echo [1/3] Creating virtual environment...
     python -m venv server\venv
-    echo [PROGRESS] [####################] 100%%
-    echo Done.
 ) else (
-    echo [1/3] Virtual Environment already exists. Skipping...
+    echo [1/3] Environment ready.
 )
 
-echo.
-echo [2/3] Installing AI dependencies...
-echo [INFO] This downloads ~500MB of high-quality AI models. 
-echo [INFO] Please wait while we prepare your engine...
-echo.
-
+:: 3. Dependencies
+echo [2/3] Installing extensions...
 call server\venv\Scripts\activate
-:: Remove --quiet so user can see real pip progress
-pip install -r server\requirements.txt
-if %errorlevel% neq 0 (
+pip install -r server\requirements.txt >nul 2>&1
+
+:: 4. Bridge Registration
+echo.
+echo [3/3] Linking to Chrome...
+echo To get your ID: chrome://extensions -^> Load Unpacked -^> Copy ID
+set /p EXT_ID="Enter ID (or press enter for default): "
+if "!EXT_ID!"=="" set "EXT_ID=hfopjgfdmfckmjkhghjdfmlhfmfmclhf"
+
+:: Path Logic
+set "BRIDGE_DIR=%~dp0server"
+set "PYTHON_EXE=%~dp0server\venv\Scripts\python.exe"
+set "BRIDGE_BAT=%~dp0server\bridge.bat"
+set "MANIFEST=%~dp0server\com.lumina.bridge.json"
+
+:: Template Replacement (Absolute Paths)
+copy /y "!BRIDGE_DIR!\bridge.bat.template" "!BRIDGE_BAT!" >nul
+set "P_PYTHON=!PYTHON_EXE:\=\\!"
+powershell -Command "(gc '!BRIDGE_BAT!') -replace 'PLACEHOLDER_PYTHON_PATH', '!P_PYTHON!' | Out-File -encoding utf8 '!BRIDGE_BAT!'"
+
+copy /y "!BRIDGE_DIR!\com.lumina.bridge.json.template" "!MANIFEST!" >nul
+set "P_BAT=!BRIDGE_BAT:\=\\!"
+powershell -Command "(gc '!MANIFEST!') -replace 'PLACEHOLDER_BRIDGE_PATH', '!P_BAT!' -replace 'PLACEHOLDER_EXTENSION_ID', '!EXT_ID!' | Out-File -encoding utf8 '!MANIFEST!'"
+
+:: Registry
+REG ADD "HKEY_CURRENT_USER\Software\Google\Chrome\NativeMessagingHosts\com.lumina.bridge" /ve /t REG_SZ /d "!MANIFEST!" /f >nul
+
+echo.
+echo ========================================
+echo   🎉 SETUP COMPLETE!
+echo ========================================
+echo.
+echo OPTION A (RECOMENDED): 
+echo    Launch the engine in a VISIBLE WINDOW for debugging.
+echo.
+set /p START_NOW="Launch Engine Window Now? (y/n): "
+if /i "!START_NOW!"=="y" (
+    start Run_Lumina.bat
     echo.
-    echo [ERROR] Failed to install dependencies. 
-    echo [TIP] Check your internet connection and try running this again.
-    pause
-    exit /b
+    echo [!] ENGINE WINDOW OPENED.
 )
 
 echo.
-echo [3/3] Finalizing configuration...
-echo [PROGRESS] [#####               ] 25%%
-
-:: 🎯 v4.0: Get Extension ID from User
+echo Final instructions:
+echo 1. Reload the Lumina extension in chrome://extensions
+echo 2. Open the popup (🎓) - it should turn green automatically.
 echo.
-echo [!] To link your extension to this engine:
-echo     1. Open chrome://extensions
-echo     2. Load Unpacked "extension" folder (if you haven't yet)
-echo     3. Copy the ID it generates
-echo.
-set /p EXT_ID="Enter your Lumina Extension ID: "
-if "!EXT_ID!"=="" (
-    echo [WARNING] No ID entered. Using default placeholder...
-    set "EXT_ID=hfopjgfdmfckmjkhghjdfmlhfmfmclhf"
-)
-
-:: Get absolute path for the manifest
-set "MANIFEST_PATH=%~dp0server\com.lumina.bridge.json"
-set "BRIDGE_BAT_PATH=%~dp0server\bridge.bat"
-set "PYTHON_EXE_PATH=%~dp0server\venv\Scripts\python.exe"
-
-:: Fallback if venv python isn't found (unlikely)
-if not exist "!PYTHON_EXE_PATH!" set "PYTHON_EXE_PATH=python.exe"
-
-echo [PROGRESS] [##########          ] 50%%
-
-:: Regenerate bridge.bat from template to ensure absolute path
-copy /y "server\bridge.bat.template" "server\bridge.bat" >nul
-set "ESCAPED_PYTHON=!PYTHON_EXE_PATH:\=\\!"
-powershell -Command "(gc 'server\bridge.bat') -replace 'PLACEHOLDER_PYTHON_PATH', '!ESCAPED_PYTHON!' | Out-File -encoding utf8 'server\bridge.bat'"
-
-:: Regenerate manifest from template to ensure clean state
-copy /y "server\com.lumina.bridge.json.template" "server\com.lumina.bridge.json" >nul
-
-:: Update the path inside the json manifest to be absolute (Crucial for Chrome)
-set "ESCAPED_BRIDGE=!BRIDGE_BAT_PATH:\=\\!"
-powershell -Command "(gc 'server\com.lumina.bridge.json') -replace 'PLACEHOLDER_BRIDGE_PATH', '!ESCAPED_BRIDGE!' -replace 'PLACEHOLDER_EXTENSION_ID', '!EXT_ID!' | Out-File -encoding utf8 'server\com.lumina.bridge.json'"
-
-echo [PROGRESS] [###############     ] 75%%
-
-:: Add to Windows Registry
-REG ADD "HKEY_CURRENT_USER\Software\Google\Chrome\NativeMessagingHosts\com.lumina.bridge" /ve /t REG_SZ /d "!MANIFEST_PATH!" /f >nul
-
-echo [PROGRESS] [####################] 100%%
-echo.
-echo [!] CRITICAL STEP:
-echo     To see the new 8 voices and link the bridge:
-echo     1. Go to chrome://extensions
-echo     2. Click the RELOAD icon (circular arrow) on the Lumina card.
-echo.
-echo FINAL STEP TO START:
-echo 1. Click the Lumina icon (🎓) in your Chrome toolbar.
-echo 2. Click the "Start Engine" toggle in the menu.
-echo 3. A DEBUG WINDOW WILL APPEAR - KEEP IT OPEN!
-echo 4. It should turn Green (Engine Active) in ~3 seconds.
-echo.
-echo Press any key to finish...
-pause >nul
-exit
-
+pause
