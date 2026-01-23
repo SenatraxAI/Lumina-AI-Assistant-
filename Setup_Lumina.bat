@@ -28,56 +28,41 @@ echo [2/3] Installing extensions...
 call server\venv\Scripts\activate
 pip install -r server\requirements.txt >nul 2>&1
 
-:: 4. Bridge Registration
-echo.
-echo [3/3] Linking to Chrome...
-echo !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-echo  IMPORTANT: Open chrome://extensions
-echo  Copy the ID for 'Lumina Audio Assistant'
-echo !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-set /p EXT_ID="Enter Extension ID: "
-if "!EXT_ID!"=="" (
-    echo [ERROR] Extension ID is required!
-    pause & exit /b
-)
+:: 4. Resident Engine Setup
+echo [3/3] Setting up Background Resident Mode...
+set "STARTUP_FOLDER=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
+set "PROJECT_DIR=%~dp0"
+set "LAUNCH_VBS=%~dp0Launch_Lumina.vbs"
+set "SC_PATH=%STARTUP_FOLDER%\Lumina_AI_Engine.lnk"
+set "DESKTOP_SC=%USERPROFILE%\Desktop\Lumina AI Engine.lnk"
 
-:: Path Logic
-set "BRIDGE_DIR=%~dp0server"
-set "PYTHON_EXE=%~dp0server\venv\Scripts\python.exe"
-set "BRIDGE_BAT=%~dp0server\bridge.bat"
-set "MANIFEST=%~dp0server\com.lumina.bridge.json"
+:: Create vbs shortcut in Startup (using PowerShell)
+powershell -Command "$WshShell = New-Object -ComObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%SC_PATH%'); $Shortcut.TargetPath = 'wscript.exe'; $Shortcut.Arguments = '\"%LAUNCH_VBS%\"'; $Shortcut.WorkingDirectory = '%PROJECT_DIR%'; $Shortcut.IconLocation = 'shell32.dll, 24'; $Shortcut.Save()"
 
-:: Template Replacement (Absolute Paths)
-copy /y "!BRIDGE_DIR!\bridge.bat.template" "!BRIDGE_BAT!" >nul
-:: Use RAW paths for the batch file
-powershell -Command "(gc '!BRIDGE_BAT!') -replace 'PLACEHOLDER_PYTHON_PATH', '!PYTHON_EXE!' | Out-File -encoding utf8 '!BRIDGE_BAT!'"
+:: Create desktop shortcut for manual launch
+powershell -Command "$WshShell = New-Object -ComObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%DESKTOP_SC%'); $Shortcut.TargetPath = 'wscript.exe'; $Shortcut.Arguments = '\"%LAUNCH_VBS%\"'; $Shortcut.WorkingDirectory = '%PROJECT_DIR%'; $Shortcut.IconLocation = 'shell32.dll, 24'; $Shortcut.Save()"
 
-copy /y "!BRIDGE_DIR!\com.lumina.bridge.json.template" "!MANIFEST!" >nul
-:: Use ESCAPED paths for the JSON manifest
-set "P_BAT=!BRIDGE_BAT:\=\\!"
-powershell -Command "(gc '!MANIFEST!') -replace 'PLACEHOLDER_BRIDGE_PATH', '!P_BAT!' -replace 'PLACEHOLDER_EXTENSION_ID', '!EXT_ID!' | Out-File -encoding utf8 '!MANIFEST!'"
-
-:: Registry
-REG ADD "HKEY_CURRENT_USER\Software\Google\Chrome\NativeMessagingHosts\com.lumina.bridge" /ve /t REG_SZ /d "!MANIFEST!" /f >nul
+:: Cleanup Legacy Native Messaging
+REG DELETE "HKEY_CURRENT_USER\Software\Google\Chrome\NativeMessagingHosts\com.lumina.bridge" /f >nul 2>&1
 
 echo.
 echo ========================================
-echo   🎉 SETUP COMPLETE!
+echo   🎉 RESIDENT SETUP COMPLETE!
 echo ========================================
 echo.
-echo OPTION A (RECOMENDED): 
-echo    Launch the engine in a VISIBLE WINDOW for debugging.
+echo 1. Lumina will now start AUTOMATICALLY when Windows boots.
+echo 2. We've added a shortcut to your DESKTOP to start it manually.
 echo.
-set /p START_NOW="Launch Engine Window Now? (y/n): "
+set /p START_NOW="Launch Engine Invisibly Now? (y/n): "
 if /i "!START_NOW!"=="y" (
-    start Run_Lumina.bat
+    start "" wscript.exe "!LAUNCH_VBS!"
     echo.
-    echo [!] ENGINE WINDOW OPENED.
+    echo [!] ENGINE STARTED IN BACKGROUND.
 )
 
 echo.
 echo Final instructions:
-echo 1. Reload the Lumina extension in chrome://extensions
-echo 2. Open the popup (🎓) - it should turn green automatically.
+echo 1. Reload the Lumina extension in chrome://extensions.
+echo 2. Open the popup (🎓) - it should turn green once the engine boots.
 echo.
 pause

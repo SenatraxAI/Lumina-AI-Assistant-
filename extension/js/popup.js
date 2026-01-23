@@ -131,25 +131,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
-    // 🎯 v4.6.2: State to prevent UI flicker while server boots
+    // 🎯 v4.8: State to handle manual starting feedback
     let isStartingManual = false;
     let startingTimeout = null;
 
-    // 4. v4.0 Engine Control Logic
+    // 4. v4.8 Resident Engine Logic
     async function updateEngineStatus() {
         const DEFAULT_URL = 'http://localhost:8080';
         let serverUrl = serverUrlInput.value || DEFAULT_URL;
         if (serverUrl.endsWith('/')) serverUrl = serverUrl.slice(0, -1);
 
-        // 🎯 v4.6 Hybrid Check: Try HTTP Ping first
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 1000);
+            const timeoutId = setTimeout(() => controller.abort(), 1200);
             const healthRes = await fetch(`${serverUrl}/api/health`, { signal: controller.signal });
             clearTimeout(timeoutId);
 
             if (healthRes.ok) {
-                isStartingManual = false; // Reset if we see it's alive
+                isStartingManual = false;
                 if (startingTimeout) clearTimeout(startingTimeout);
 
                 engineStatusEl.className = 'status-indicator running';
@@ -157,79 +156,59 @@ document.addEventListener('DOMContentLoaded', async () => {
                 toggleEngineBtn.innerText = 'Stop Engine';
                 toggleEngineBtn.classList.add('active');
                 toggleEngineBtn.disabled = false;
-                return; // Early exit - it's running!
+                return;
             }
         } catch (e) {
-            // Server not reachable yet
+            // Server offline
         }
 
-        // If we are in the middle of starting, don't show "Stopped"
         if (isStartingManual) {
             engineStatusEl.className = 'status-indicator starting';
             engineStatusEl.innerText = '🟡 Starting...';
             toggleEngineBtn.disabled = true;
-            return;
+        } else {
+            engineStatusEl.className = 'status-indicator stopped';
+            engineStatusEl.innerText = '🔴 Engine Offline';
+            toggleEngineBtn.innerText = 'Launch Engine';
+            toggleEngineBtn.classList.remove('active');
+            toggleEngineBtn.disabled = false;
         }
-
-        // 🎯 Bridge Fallback: Check if bridge is actually starting/stopped
-        chrome.runtime.sendMessage({ action: 'controlBackend', command: 'STATUS' }, (response) => {
-            if (chrome.runtime.lastError || !response || response.status === 'ERROR') {
-                engineStatusEl.className = 'status-indicator stopped';
-                engineStatusEl.innerText = '🔴 Bridge Off';
-                toggleEngineBtn.innerText = 'Start Engine';
-                toggleEngineBtn.classList.remove('active');
-                return;
-            }
-
-            if (response.status === 'RUNNING') {
-                engineStatusEl.className = 'status-indicator starting';
-                engineStatusEl.innerText = '🟡 Starting...';
-            } else {
-                engineStatusEl.className = 'status-indicator stopped';
-                engineStatusEl.innerText = '🔴 Stopped';
-                toggleEngineBtn.innerText = 'Start Engine';
-                toggleEngineBtn.classList.remove('active');
-            }
-        });
     }
 
     toggleEngineBtn.addEventListener('click', async () => {
-        const isRunning = engineStatusEl.classList.contains('running');
-        const command = isRunning ? 'STOP' : 'START';
+        const isActive = engineStatusEl.classList.contains('running');
+        const DEFAULT_URL = 'http://localhost:8080';
+        let serverUrl = serverUrlInput.value || DEFAULT_URL;
+        if (serverUrl.endsWith('/')) serverUrl = serverUrl.slice(0, -1);
 
-        engineStatusEl.className = 'status-indicator starting';
-        engineStatusEl.innerText = isRunning ? '🟡 Stopping...' : '🟡 Starting...';
-        toggleEngineBtn.disabled = true;
-
-        if (command === 'START') {
+        if (!isActive) {
+            // Launch Context
             isStartingManual = true;
             if (startingTimeout) clearTimeout(startingTimeout);
             startingTimeout = setTimeout(() => {
                 isStartingManual = false;
                 updateEngineStatus();
             }, 30000);
+
+            feedback(toggleEngineBtn, 'Please run "Lumina AI Engine" from Desktop', '#ff9800', true);
+            setTimeout(() => { toggleEngineBtn.disabled = false; updateEngineStatus(); }, 3000);
+            return;
         }
 
-        // 🎯 v4.6.1: Force Server Shutdown via API if active
-        if (isRunning) {
-            isStartingManual = false;
-            try {
-                const DEFAULT_URL = 'http://localhost:8080';
-                let serverUrl = serverUrlInput.value || DEFAULT_URL;
-                if (serverUrl.endsWith('/')) serverUrl = serverUrl.slice(0, -1);
+        // Stop Context (Direct API Shutdown)
+        engineStatusEl.className = 'status-indicator starting';
+        engineStatusEl.innerText = '🟡 Stopping...';
+        toggleEngineBtn.disabled = true;
+        isStartingManual = false;
 
-                // Fire and forget shutdown signal
-                fetch(`${serverUrl}/api/shutdown`, { method: 'POST' }).catch(() => { });
-            } catch (e) { }
-        }
+        try {
+            await fetch(`${serverUrl}/api/shutdown`, { method: 'POST' });
+        } catch (e) { }
 
-        chrome.runtime.sendMessage({ action: 'controlBackend', command: command }, (response) => {
-            // Give it 2 seconds of delay before the first status poll after clicking start
-            setTimeout(() => {
-                toggleEngineBtn.disabled = false;
-                updateEngineStatus();
-            }, 2000);
-        });
+        // Wait for server to die
+        setTimeout(() => {
+            updateEngineStatus();
+        }, 3000);
     });
 
     // Initial status check

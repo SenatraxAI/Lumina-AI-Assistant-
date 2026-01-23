@@ -48,24 +48,8 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     }
 });
 
-// 🎯 v4.0 Native Messaging Control
-let port = null;
-
-function connectToNativeHost() {
-    if (port) return port;
-    try {
-        port = chrome.runtime.connectNative("com.lumina.bridge");
-        port.onDisconnect.addListener(() => {
-            console.warn("Lumina Bridge disconnected:", chrome.runtime.lastError);
-            port = null;
-        });
-        return port;
-    } catch (e) {
-        console.error("Failed to connect to Lumina Bridge:", e);
-        return null;
-    }
-}
-
+// 🎯 v4.8 Resident Mode: Bridge logic removed. 
+// Communication is now direct-to-API for 100% reliability.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'captureTab') {
         chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: 'png' }, (dataUrl) => {
@@ -75,23 +59,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 sendResponse({ success: true, screenshot: dataUrl });
             }
         });
-        return true;
-    }
-
-    // 🎯 v4.0 Bridge Support
-    if (message.action === 'controlBackend') {
-        const nativePort = connectToNativeHost();
-        if (!nativePort) {
-            sendResponse({ status: "ERROR", error: "Bridge not installed" });
-            return;
-        }
-
-        const onMsg = (response) => {
-            nativePort.onMessage.removeListener(onMsg);
-            sendResponse(response);
-        };
-        nativePort.onMessage.addListener(onMsg);
-        nativePort.postMessage({ command: message.command });
         return true;
     }
 });
