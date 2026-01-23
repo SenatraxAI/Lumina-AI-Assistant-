@@ -131,6 +131,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
+    // 🎯 v4.6.2: State to prevent UI flicker while server boots
+    let isStartingManual = false;
+    let startingTimeout = null;
+
     // 4. v4.0 Engine Control Logic
     async function updateEngineStatus() {
         const DEFAULT_URL = 'http://localhost:8080';
@@ -145,14 +149,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             clearTimeout(timeoutId);
 
             if (healthRes.ok) {
+                isStartingManual = false; // Reset if we see it's alive
+                if (startingTimeout) clearTimeout(startingTimeout);
+
                 engineStatusEl.className = 'status-indicator running';
                 engineStatusEl.innerText = '🟢 Engine Active';
                 toggleEngineBtn.innerText = 'Stop Engine';
                 toggleEngineBtn.classList.add('active');
+                toggleEngineBtn.disabled = false;
                 return; // Early exit - it's running!
             }
         } catch (e) {
-            // Server not reachable yet, proceed to check Bridge
+            // Server not reachable yet
+        }
+
+        // If we are in the middle of starting, don't show "Stopped"
+        if (isStartingManual) {
+            engineStatusEl.className = 'status-indicator starting';
+            engineStatusEl.innerText = '🟡 Starting...';
+            toggleEngineBtn.disabled = true;
+            return;
         }
 
         // 🎯 Bridge Fallback: Check if bridge is actually starting/stopped
@@ -185,8 +201,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         engineStatusEl.innerText = isRunning ? '🟡 Stopping...' : '🟡 Starting...';
         toggleEngineBtn.disabled = true;
 
+        if (command === 'START') {
+            isStartingManual = true;
+            if (startingTimeout) clearTimeout(startingTimeout);
+            startingTimeout = setTimeout(() => {
+                isStartingManual = false;
+                updateEngineStatus();
+            }, 30000);
+        }
+
         // 🎯 v4.6.1: Force Server Shutdown via API if active
         if (isRunning) {
+            isStartingManual = false;
             try {
                 const DEFAULT_URL = 'http://localhost:8080';
                 let serverUrl = serverUrlInput.value || DEFAULT_URL;
@@ -198,8 +224,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         chrome.runtime.sendMessage({ action: 'controlBackend', command: command }, (response) => {
-            toggleEngineBtn.disabled = false;
-            updateEngineStatus();
+            // Give it 2 seconds of delay before the first status poll after clicking start
+            setTimeout(() => {
+                toggleEngineBtn.disabled = false;
+                updateEngineStatus();
+            }, 2000);
         });
     });
 

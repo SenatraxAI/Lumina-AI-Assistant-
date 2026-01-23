@@ -46,14 +46,18 @@ def main():
             command = msg.get("command")
 
             if command == "START":
-                if backend_process is None or backend_process.poll() is not None:
-                    # Use cmd /k and python.exe to show a persistent debug window
-                    # This ensures the window stays open even if the server crashes
-                    backend_process = subprocess.Popen(["cmd", "/k", f'"{VENV_PYTHON}" "{APP_PATH}"'], 
-                                                     creationflags=subprocess.CREATE_NEW_CONSOLE)
-                    send_message({"status": "STARTED", "pid": backend_process.pid})
-                else:
-                    send_message({"status": "ALREADY_RUNNING"})
+                # 🎯 v4.6.2 Detached Launcher
+                # We use "start" to open Run_Lumina.bat in a completely new, independent window.
+                # This prevents the terminal's output from corrupting the Native Messaging stream.
+                ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
+                LAUNCHER_PATH = os.path.normpath(os.path.join(ROOT_DIR, "Run_Lumina.bat"))
+                
+                try:
+                    # 'start "" "path"' is the standard way to launch an independent process on Windows
+                    subprocess.Popen(f'start "" "{LAUNCHER_PATH}"', shell=True)
+                    send_message({"status": "STARTED"})
+                except Exception as e:
+                    send_message({"status": "ERROR", "error": str(e)})
 
             elif command == "STOP":
                 # 🎯 v4.6.1: Try API shutdown first as it's more reliable for manual runs
