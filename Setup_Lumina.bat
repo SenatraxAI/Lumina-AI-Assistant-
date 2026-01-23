@@ -32,17 +32,12 @@ pip install -r server\requirements.txt >nul 2>&1
 echo.
 echo [3/3] Configure Engine Startup...
 echo.
-echo   [1] SILENT MODE (Recommended)
-echo       - Starts with Windows.
-echo       - Runs in background (Hidden).
-echo       - Use this for daily "Always On" usage.
+echo   FIRST-TIME SETUP: Using DEBUG MODE
+echo   - You'll see a BLACK TERMINAL window when the engine starts.
+echo   - This lets you verify everything works correctly.
+echo   - Once confirmed, run "Switch_To_Silent.bat" to hide the window.
 echo.
-echo   [2] DEBUG MODE
-echo       - Starts with Windows.
-echo       - Opens a BLACK TERMINAL window.
-echo       - Best for testing and seeing logs.
-echo.
-set /p MODE_CHOICE="Select Mode (1 or 2): "
+set "MODE_CHOICE=2"
 
 set "STARTUP_FOLDER=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
 set "PROJECT_DIR=%~dp0"
@@ -51,17 +46,10 @@ set "LAUNCH_BAT=%~dp0Run_Lumina.bat"
 set "SC_PATH=%STARTUP_FOLDER%\Lumina_AI_Engine.lnk"
 set "DESKTOP_SC=%USERPROFILE%\Desktop\Lumina AI Engine.lnk"
 
-if "%MODE_CHOICE%"=="2" (
-    :: DEBUG MODE: Link directly to .bat
-    set "TARGET_APP=cmd.exe"
-    set "TARGET_ARG=/k \"%LAUNCH_BAT%\""
-    echo [i] Configured for VISIBLE DEBUG WINDOW.
-) else (
-    :: SILENT MODE: Link to .vbs
-    set "TARGET_APP=wscript.exe"
-    set "TARGET_ARG=\"%LAUNCH_VBS%\""
-    echo [i] Configured for SILENT BACKGROUND.
-)
+:: DEBUG MODE: Link directly to .bat
+set "TARGET_APP=cmd.exe"
+set "TARGET_ARG=/k \"%LAUNCH_BAT%\""
+echo [i] Configured for VISIBLE DEBUG WINDOW.
 
 :: Create Startup Shortcut
 powershell -Command "$WshShell = New-Object -ComObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%SC_PATH%'); $Shortcut.TargetPath = '%TARGET_APP%'; $Shortcut.Arguments = '%TARGET_ARG%'; $Shortcut.WorkingDirectory = '%PROJECT_DIR%'; $Shortcut.IconLocation = 'shell32.dll, 24'; $Shortcut.Save()"
