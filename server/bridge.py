@@ -82,9 +82,9 @@ def main():
                 send_message({"status": "STOPPED"})
 
             elif command == "STATUS":
-                # We can't easily check 'start'ed process health here,
-                # but popup.js now does its own HTTP health check.
-                send_message({"status": "RUNNING"}) 
+                # 🎯 v4.6.3: Always report STOPPED if we just started the bridge.
+                # popup.js handles the "Starting..." state and the HTTP health check.
+                send_message({"status": "STOPPED"}) 
 
     except Exception as e:
         log_debug(f"BRIDGE_CRITICAL_ERROR: {str(e)}")

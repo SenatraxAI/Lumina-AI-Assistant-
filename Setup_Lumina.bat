@@ -31,9 +31,15 @@ pip install -r server\requirements.txt >nul 2>&1
 :: 4. Bridge Registration
 echo.
 echo [3/3] Linking to Chrome...
-echo To get your ID: chrome://extensions -^> Load Unpacked -^> Copy ID
-set /p EXT_ID="Enter ID (or press enter for default): "
-if "!EXT_ID!"=="" set "EXT_ID=hfopjgfdmfckmjkhghjdfmlhfmfmclhf"
+echo !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+echo  IMPORTANT: Open chrome://extensions
+echo  Copy the ID for 'Lumina Audio Assistant'
+echo !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+set /p EXT_ID="Enter Extension ID: "
+if "!EXT_ID!"=="" (
+    echo [ERROR] Extension ID is required!
+    pause & exit /b
+)
 
 :: Path Logic
 set "BRIDGE_DIR=%~dp0server"
@@ -43,10 +49,11 @@ set "MANIFEST=%~dp0server\com.lumina.bridge.json"
 
 :: Template Replacement (Absolute Paths)
 copy /y "!BRIDGE_DIR!\bridge.bat.template" "!BRIDGE_BAT!" >nul
-set "P_PYTHON=!PYTHON_EXE:\=\\!"
-powershell -Command "(gc '!BRIDGE_BAT!') -replace 'PLACEHOLDER_PYTHON_PATH', '!P_PYTHON!' | Out-File -encoding utf8 '!BRIDGE_BAT!'"
+:: Use RAW paths for the batch file
+powershell -Command "(gc '!BRIDGE_BAT!') -replace 'PLACEHOLDER_PYTHON_PATH', '!PYTHON_EXE!' | Out-File -encoding utf8 '!BRIDGE_BAT!'"
 
 copy /y "!BRIDGE_DIR!\com.lumina.bridge.json.template" "!MANIFEST!" >nul
+:: Use ESCAPED paths for the JSON manifest
 set "P_BAT=!BRIDGE_BAT:\=\\!"
 powershell -Command "(gc '!MANIFEST!') -replace 'PLACEHOLDER_BRIDGE_PATH', '!P_BAT!' -replace 'PLACEHOLDER_EXTENSION_ID', '!EXT_ID!' | Out-File -encoding utf8 '!MANIFEST!'"
 
