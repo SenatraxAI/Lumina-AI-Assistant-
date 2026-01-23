@@ -28,19 +28,46 @@ echo [2/3] Installing extensions...
 call server\venv\Scripts\activate
 pip install -r server\requirements.txt >nul 2>&1
 
-:: 4. Resident Engine Setup
-echo [3/3] Setting up Background Resident Mode...
+:: 4. Engine Mode Selection
+echo.
+echo [3/3] Configure Engine Startup...
+echo.
+echo   [1] SILENT MODE (Recommended)
+echo       - Starts with Windows.
+echo       - Runs in background (Hidden).
+echo       - Use this for daily "Always On" usage.
+echo.
+echo   [2] DEBUG MODE
+echo       - Starts with Windows.
+echo       - Opens a BLACK TERMINAL window.
+echo       - Best for testing and seeing logs.
+echo.
+set /p MODE_CHOICE="Select Mode (1 or 2): "
+
 set "STARTUP_FOLDER=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
 set "PROJECT_DIR=%~dp0"
 set "LAUNCH_VBS=%~dp0Launch_Lumina.vbs"
+set "LAUNCH_BAT=%~dp0Run_Lumina.bat"
 set "SC_PATH=%STARTUP_FOLDER%\Lumina_AI_Engine.lnk"
 set "DESKTOP_SC=%USERPROFILE%\Desktop\Lumina AI Engine.lnk"
 
-:: Create vbs shortcut in Startup (using PowerShell)
-powershell -Command "$WshShell = New-Object -ComObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%SC_PATH%'); $Shortcut.TargetPath = 'wscript.exe'; $Shortcut.Arguments = '\"%LAUNCH_VBS%\"'; $Shortcut.WorkingDirectory = '%PROJECT_DIR%'; $Shortcut.IconLocation = 'shell32.dll, 24'; $Shortcut.Save()"
+if "%MODE_CHOICE%"=="2" (
+    :: DEBUG MODE: Link directly to .bat
+    set "TARGET_APP=cmd.exe"
+    set "TARGET_ARG=/k \"%LAUNCH_BAT%\""
+    echo [i] Configured for VISIBLE DEBUG WINDOW.
+) else (
+    :: SILENT MODE: Link to .vbs
+    set "TARGET_APP=wscript.exe"
+    set "TARGET_ARG=\"%LAUNCH_VBS%\""
+    echo [i] Configured for SILENT BACKGROUND.
+)
 
-:: Create desktop shortcut for manual launch
-powershell -Command "$WshShell = New-Object -ComObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%DESKTOP_SC%'); $Shortcut.TargetPath = 'wscript.exe'; $Shortcut.Arguments = '\"%LAUNCH_VBS%\"'; $Shortcut.WorkingDirectory = '%PROJECT_DIR%'; $Shortcut.IconLocation = 'shell32.dll, 24'; $Shortcut.Save()"
+:: Create Startup Shortcut
+powershell -Command "$WshShell = New-Object -ComObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%SC_PATH%'); $Shortcut.TargetPath = '%TARGET_APP%'; $Shortcut.Arguments = '%TARGET_ARG%'; $Shortcut.WorkingDirectory = '%PROJECT_DIR%'; $Shortcut.IconLocation = 'shell32.dll, 24'; $Shortcut.Save()"
+
+:: Create Desktop Shortcut
+powershell -Command "$WshShell = New-Object -ComObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%DESKTOP_SC%'); $Shortcut.TargetPath = '%TARGET_APP%'; $Shortcut.Arguments = '%TARGET_ARG%'; $Shortcut.WorkingDirectory = '%PROJECT_DIR%'; $Shortcut.IconLocation = 'shell32.dll, 24'; $Shortcut.Save()"
 
 :: Cleanup Legacy Native Messaging
 REG DELETE "HKEY_CURRENT_USER\Software\Google\Chrome\NativeMessagingHosts\com.lumina.bridge" /f >nul 2>&1
