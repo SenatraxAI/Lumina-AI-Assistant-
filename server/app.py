@@ -20,6 +20,8 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import psutil
 from dotenv import load_dotenv
+from fastapi import UploadFile, File
+import openai
 
 load_dotenv()
 
@@ -589,6 +591,41 @@ async def generate(request: GenerateRequest):
         "text": full_text_response,
         "duration": 0
     }
+
+@app.post("/api/stt")
+async def speech_to_text(file: UploadFile = File(...)):
+    """🎯 v4.10.0: Transcribe voice using OpenAI Whisper"""
+    try:
+        logger.info(f"🎙️ [STT] Received audio file: {file.filename}")
+        
+        # Read file into memory
+        audio_data = await file.read()
+        
+        # We need a file-like object with a proper name for OpenAI
+        # Using temp storage avoids complex memory buffer naming issues
+        temp_path = AUDIO_DIR / f"temp_stt_{int(time.time())}.wav"
+        with open(temp_path, "wb") as f:
+            f.write(audio_data)
+            
+        try:
+            client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            with open(temp_path, "rb") as audio_file:
+                transcript = client.audio.transcriptions.create(
+                    model="whisper-1", 
+                    file=audio_file,
+                    response_format="text"
+                )
+            
+            logger.info(f"🎙️ [STT] Transcribed text: {transcript[:50]}...")
+            return {"success": True, "text": transcript}
+            
+        finally:
+            if temp_path.exists():
+                temp_path.unlink()
+                
+    except Exception as e:
+        logger.error(f"🎙️ [STT] Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Cache for Stream Jobs
 _request_cache = {}

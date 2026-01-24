@@ -10,7 +10,8 @@
         audioElement: null, blobUrl: null,
         currentConversation: [], // Track conversation history
         activeModel: 'gemini', // 🎯 v4.8.4: Track the model used for the current thread
-        pendingPrompts: new Set() // 🎯 v3.5.3: Prevent duplicate generations
+        pendingPrompts: new Set(), // 🎯 v3.5.3: Prevent duplicate generations
+        mediaRecorder: null, audioChunks: [] // 🎯 v4.10.0: Voice state
     };
     let elements = {};
 
@@ -144,6 +145,23 @@
         .badge-success { background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
         .badge-warning { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
         .badge-info { background: rgba(59, 130, 246, 0.2); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); }
+
+        .lumina-mic-btn {
+            cursor: pointer; font-size: 18px; opacity: 0.5; transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center;
+            width: 32px; height: 32px; border-radius: 8px; margin-left: 5px;
+        }
+        .lumina-mic-btn:hover { opacity: 1; transform: scale(1.1); color: #FF9F0A; }
+        .lumina-mic-btn.recording { 
+            opacity: 1; color: #FF4500; 
+            animation: lumina-mic-pulse 1.5s infinite; 
+            background: rgba(255, 69, 0, 0.1);
+        }
+        @keyframes lumina-mic-pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); box-shadow: 0 0 10px rgba(255, 69, 0, 0.3); }
+            100% { transform: scale(1); }
+        }
     `;
 
     function ensureStyles() {
@@ -227,7 +245,10 @@
                 <div class="lumina-body">
                     <div class="lumina-input-wrap">
                         <textarea class="lumina-textarea" placeholder="Ask anything..."></textarea>
-                        <div class="lumina-vision-toggle" id="lumina-vis-tg" title="Toggle Vision (See Screen)">👁️</div>
+                        <div style="display:flex; flex-direction:column; gap:5px; padding:2px;">
+                            <div class="lumina-vision-toggle" id="lumina-vis-tg" title="Toggle Vision (See Screen)">👁️</div>
+                            <div class="lumina-mic-btn" id="lumina-mic-tg" title="Hold to Speak">🎙️</div>
+                        </div>
                     </div>
                     
                     <div id="lumina-context-bar" style="font-size: 11px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; opacity: 0.9;">
@@ -292,6 +313,18 @@
                 }
             };
 
+            // 🎯 v4.10.0: Mic Toggle logic
+            const micBtn = widget.querySelector('#lumina-mic-tg');
+            const ta = widget.querySelector('.lumina-textarea');
+
+            micBtn.onmousedown = () => startRecording(micBtn, ta);
+            micBtn.onmouseup = () => stopRecording(micBtn);
+            // Accessibility: allow single click toggle too
+            micBtn.onclick = () => {
+                if (micBtn.classList.contains('recording')) stopRecording(micBtn);
+                else startRecording(micBtn, ta);
+            };
+
             console.log('🎓 [SHOW_WIDGET] Appending widget to body...');
             document.body.appendChild(widget);
             elements.widget = widget;
@@ -326,7 +359,6 @@
                 console.log('🎓 [SHOW_WIDGET] Widget is now visible!');
             }, 10);
 
-            const ta = widget.querySelector('.lumina-textarea');
             ta.focus();
             console.log('🎓 [SHOW_WIDGET] Textarea focused');
 
@@ -995,6 +1027,64 @@
                 setTimeout(() => shutter.remove(), 200);
             }, 100);
         });
+    }
+
+    async function startRecording(btn, textarea) {
+        if (state.mediaRecorder && state.mediaRecorder.state === 'recording') return;
+
+        try {
+            console.log('🎙️ [MIC] Starting recording...');
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            state.audioChunks = [];
+            state.mediaRecorder = new MediaRecorder(stream);
+
+            state.mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) state.audioChunks.push(e.data);
+            };
+
+            state.mediaRecorder.onstop = async () => {
+                console.log('🎙️ [MIC] Recording stopped, transcribing...');
+                const audioBlob = new Blob(state.audioChunks, { type: 'audio/wav' });
+                const formData = new FormData();
+                formData.append('file', audioBlob, 'recording.wav');
+
+                const settings = await chrome.storage.sync.get(['serverUrl', 'apiKeyOpenai']);
+                const serverUrl = settings.serverUrl || CONFIG.serverUrl;
+
+                try {
+                    const res = await fetch(`${serverUrl}/api/stt`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await res.json();
+                    if (data.text) {
+                        const currentVal = textarea.value;
+                        textarea.value = currentVal + (currentVal ? ' ' : '') + data.text;
+                        textarea.dispatchEvent(new Event('input')); // Trigger resize if any
+                    }
+                } catch (err) {
+                    console.error('🎙️ [MIC] Transcription error:', err);
+                    showToast("Failed to hear you... try again?");
+                }
+
+                // Cleanup stream
+                stream.getTracks().forEach(track => track.stop());
+            };
+
+            state.mediaRecorder.start();
+            btn.classList.add('recording');
+            showToast("Listening... (Speak now)");
+        } catch (err) {
+            console.error('🎙️ [MIC] Access denied:', err);
+            showToast("Microphone access denied!");
+        }
+    }
+
+    function stopRecording(btn) {
+        if (state.mediaRecorder && state.mediaRecorder.state === 'recording') {
+            state.mediaRecorder.stop();
+            btn.classList.remove('recording');
+        }
     }
 
     init();
