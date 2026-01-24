@@ -135,7 +135,9 @@ class OpenAIProvider(LLMProvider):
             messages = [{"role": "system", "content": system_instruction}]
             
             if history:
-                messages.extend(history)
+                # 🎯 v4.8.6: Clean history for strict APIs (remove audioUrl, etc.)
+                clean_history = [{"role": m["role"], "content": m["content"]} for m in history]
+                messages.extend(clean_history)
                 
             user_content = [{"type": "text", "text": prompt + f"\n\nTone: {tone}"}]
             
@@ -212,7 +214,9 @@ class GroqProvider(LLMProvider):
             messages.append({"role": "system", "content": system_instruction})
             
             if history:
-                messages.extend(history)
+                # 🎯 v4.8.6: Clean history for strict APIs (remove audioUrl, etc.)
+                clean_history = [{"role": m["role"], "content": m["content"]} for m in history]
+                messages.extend(clean_history)
 
             messages.append({"role": "user", "content": final_text_prompt})
             
