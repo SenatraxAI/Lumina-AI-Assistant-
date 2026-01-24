@@ -51,11 +51,31 @@ set "TARGET_APP=cmd.exe"
 set "TARGET_ARG=/k \"%LAUNCH_BAT%\""
 echo [i] Configured for VISIBLE DEBUG WINDOW.
 
-:: Create Startup Shortcut
-powershell -Command "$WshShell = New-Object -ComObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%SC_PATH%'); $Shortcut.TargetPath = '%TARGET_APP%'; $Shortcut.Arguments = '%TARGET_ARG%'; $Shortcut.WorkingDirectory = '%PROJECT_DIR%'; $Shortcut.IconLocation = 'shell32.dll, 24'; $Shortcut.Save()"
+:: Create Shortcut using temporary script for robustness
+echo [i] Creating shortcuts...
+echo $startup = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::Startup) > "%TEMP%\lumina_sc.ps1"
+echo $projectDir = "%PROJECT_DIR%" >> "%TEMP%\lumina_sc.ps1"
+echo $launchBat = "%LAUNCH_BAT%" >> "%TEMP%\lumina_sc.ps1"
+echo $launchVbs = "%LAUNCH_VBS%" >> "%TEMP%\lumina_sc.ps1"
+echo $mode = "%MODE_CHOICE%" >> "%TEMP%\lumina_sc.ps1"
+echo $ws = New-Object -ComObject WScript.Shell >> "%TEMP%\lumina_sc.ps1"
+echo if ($mode -eq "2") { $target = "cmd.exe"; $args = "/k `"$launchBat`"" } else { $target = "wscript.exe"; $args = "`"$launchVbs`"" } >> "%TEMP%\lumina_sc.ps1"
+echo $sc = $ws.CreateShortcut((Join-Path $startup "Lumina_AI_Engine.lnk")) >> "%TEMP%\lumina_sc.ps1"
+echo $sc.TargetPath = $target >> "%TEMP%\lumina_sc.ps1"
+echo $sc.Arguments = $args >> "%TEMP%\lumina_sc.ps1"
+echo $sc.WorkingDirectory = $projectDir >> "%TEMP%\lumina_sc.ps1"
+echo $sc.IconLocation = "shell32.dll, 24" >> "%TEMP%\lumina_sc.ps1"
+echo $sc.Save() >> "%TEMP%\lumina_sc.ps1"
+echo $desktop = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::Desktop) >> "%TEMP%\lumina_sc.ps1"
+echo $dsc = $ws.CreateShortcut((Join-Path $desktop "Lumina AI Engine.lnk")) >> "%TEMP%\lumina_sc.ps1"
+echo $dsc.TargetPath = $target >> "%TEMP%\lumina_sc.ps1"
+echo $dsc.Arguments = $args >> "%TEMP%\lumina_sc.ps1"
+echo $dsc.WorkingDirectory = $projectDir >> "%TEMP%\lumina_sc.ps1"
+echo $dsc.IconLocation = "shell32.dll, 24" >> "%TEMP%\lumina_sc.ps1"
+echo $dsc.Save() >> "%TEMP%\lumina_sc.ps1"
 
-:: Create Desktop Shortcut
-powershell -Command "$WshShell = New-Object -ComObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%DESKTOP_SC%'); $Shortcut.TargetPath = '%TARGET_APP%'; $Shortcut.Arguments = '%TARGET_ARG%'; $Shortcut.WorkingDirectory = '%PROJECT_DIR%'; $Shortcut.IconLocation = 'shell32.dll, 24'; $Shortcut.Save()"
+powershell -ExecutionPolicy Bypass -File "%TEMP%\lumina_sc.ps1"
+del "%TEMP%\lumina_sc.ps1"
 
 :: Cleanup Legacy Native Messaging
 REG DELETE "HKEY_CURRENT_USER\Software\Google\Chrome\NativeMessagingHosts\com.lumina.bridge" /f >nul 2>&1
