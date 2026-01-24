@@ -276,9 +276,28 @@
             console.log('🚀 [SUBMIT] Selected model:', selectedModel);
             console.log('🚀 [SUBMIT] Selected text:', state.selectedText);
 
+            // 🎯 v4.8.2: If no text selected, capture screenshot for Vision
+            let screenshot = null;
+            if (!state.selectedText) {
+                console.log('📸 [SUBMIT] No text selected, capturing screenshot...');
+                btn.innerText = "Analyzing Screen...";
+                try {
+                    const captureRes = await new Promise(resolve => {
+                        chrome.runtime.sendMessage({ action: 'captureTab' }, resolve);
+                    });
+                    if (captureRes && captureRes.success) {
+                        screenshot = captureRes.screenshot.split(',')[1]; // Strip data:image/png;base64,
+                        console.log('📸 [SUBMIT] Screenshot captured successfully');
+                    }
+                } catch (err) {
+                    console.warn('📸 [SUBMIT] Screenshot failed:', err);
+                }
+            }
+
             const requestBody = {
-                text: state.selectedText || "Context",
+                text: state.selectedText || "", // 🎯 Removed "Context" placeholder
                 prompt: q,
+                screenshot: screenshot,
                 voice: widget.querySelector('#lumina-v-sel').value,
                 apiKey: settings.apiKey,
                 apiKeyGroq: settings.apiKeyGroq,
@@ -384,7 +403,7 @@
                 const res = await fetch(`${settings.serverUrl || CONFIG.serverUrl}/api/generate`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        text: state.selectedText,
+                        text: state.selectedText || "", // 🎯 Removed "Context" placeholder
                         prompt: q,
                         history: state.currentConversation.slice(0, -1), // Pass conversation except last user msg
                         apiKey: settings.apiKey,

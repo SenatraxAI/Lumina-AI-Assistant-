@@ -316,7 +316,7 @@ class LLMHandler:
         if screenshots: images.extend(screenshots)
         
         # 2. Prepare Prompt
-        if "No text selected" in text or not text.strip():
+        if "No text selected" in text or not text.strip() or text.strip().lower() == "context":
             # CASE A: No Text Selection
             
             if not images:
