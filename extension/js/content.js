@@ -125,7 +125,18 @@
         .lumina-vision-toggle.active { opacity: 1; color: #FF9F0A; background: rgba(255, 159, 10, 0.1); }
         .lumina-vision-toggle:hover { opacity: 0.8; transform: scale(1.1); }
         
+        .lumina-shutter {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #fff; z-index: 2147483647; pointer-events: none; opacity: 0;
+            transition: opacity 0.15s;
+        }
         .lumina-shutter.flash { opacity: 0.8; }
+        
+        .lumina-capturing .lumina-overlay, 
+        .lumina-capturing #lumina-trigger, 
+        .lumina-capturing #lumina-history-fab { 
+            display: none !important; 
+        }
 
         .lumina-context-badge {
             padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 10px; text-transform: uppercase;
@@ -378,13 +389,19 @@
             // 🎯 v4.8.5: Screenshot logic moved to conditional block
             let screenshot = null;
             if (visionEnabled) {
-                console.log('📸 [SUBMIT] Vision enabled, triggering shutter...');
-                triggerShutterEffect();
+                console.log('📸 [SUBMIT] Vision enabled, hiding UI for clean capture...');
+                document.body.classList.add('lumina-capturing');
 
                 try {
+                    // Small delay to ensure browser repaints without our UI
+                    await new Promise(r => setTimeout(r, 100));
+
                     const captureRes = await new Promise(resolve => {
                         chrome.runtime.sendMessage({ action: 'captureTab' }, resolve);
                     });
+
+                    document.body.classList.remove('lumina-capturing');
+                    triggerShutterEffect();
                     if (captureRes && captureRes.success) {
                         screenshot = captureRes.screenshot.split(',')[1];
                         console.log('📸 [SUBMIT] Screenshot captured successfully');
@@ -409,6 +426,7 @@
                     }
                 } catch (err) {
                     console.warn('📸 [SUBMIT] Screenshot failed:', err);
+                    document.body.classList.remove('lumina-capturing');
                 }
             } else {
                 console.log('📸 [SUBMIT] Vision disabled, sending pure text.');
