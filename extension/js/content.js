@@ -287,8 +287,7 @@
 
             widget.querySelector('.lumina-close-btn').onclick = () => {
                 widget.remove();
-                state.selectedText = ''; // 🎯 v4.8.8: Reset selection on cancel
-                state.currentConversation = []; // Also clean memory on cancel
+                // 🎯 v4.8.9: Selection is now persistent for stability
             };
             widget.querySelector('#lumina-sub').onclick = () => handleSubmit(widget);
             ta.onkeydown = (e) => {
@@ -311,8 +310,14 @@
         const btn = widget.querySelector('#lumina-sub');
         const q = ta.value.trim();
 
-        console.log('🚀 [SUBMIT] Query:', q, 'isLoading:', state.isLoading);
+        console.log('🚀 [SUBMIT] Query:', q, 'isLoading:', state.isLoading, 'Context:', state.selectedText ? 'FOUND' : 'EMPTY');
         if (!q) return;
+
+        // 🎯 v4.8.9: Context Validation
+        if (!state.selectedText && !visionEnabled) {
+            showToast("Nothing to context! Highlight text or enable Vision 👁️.");
+            return;
+        }
 
         // 🎯 v3.5.3: Deduplication check
         if (state.pendingPrompts.has(q)) {
@@ -404,8 +409,7 @@
             const data = await res.json();
             console.log('🚀 [SUBMIT] Response data:', data);
 
-            // Clear choice/selection AFTER successful submit so next trigger is fresh
-            state.selectedText = '';
+            // 🎯 v4.8.9: Removed selection reset to keep context for follow-ups
 
             // Initialize conversation state with the new query and response
             state.currentConversation = [
@@ -860,7 +864,7 @@
         document.addEventListener('mousedown', (e) => {
             if (!e.target.closest('#lumina-trigger, .lumina-overlay, #lumina-history-fab, #lumina-history-list')) {
                 hideTrigger();
-                state.selectedText = ''; // 🎯 v4.8.8: Reset if user clicks away
+                // 🎯 v4.8.9: Selection is now persistent
                 if (elements.historyList) elements.historyList.classList.remove('visible');
                 if (elements.fab) elements.fab.classList.remove('open');
             }
