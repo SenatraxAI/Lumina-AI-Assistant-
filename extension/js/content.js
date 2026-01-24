@@ -173,16 +173,19 @@
 
         console.log('🎓 [SHOW_WIDGET] Fetching API keys from storage...');
         try {
-            const settings = await chrome.storage.sync.get(['apiKey', 'apiKeyGroq', 'apiKeyOpenai', 'apiKeyClaude']);
+            const settings = await chrome.storage.sync.get(['apiKeyGemini', 'apiKeyGroq', 'apiKeyOpenai', 'apiKeyClaude']);
             console.log('🎓 [SHOW_WIDGET] Settings retrieved:', settings);
 
             let modelOptions = '';
+            // 🎯 v4.8.3: Consistently use apiKeyGemini
             if (settings.apiKeyGroq) modelOptions += '<option value="groq">Groq (Text Only)</option>';
-            if (settings.apiKey) modelOptions += '<option value="gemini">Gemini 2.5 Flash Lite (Vision ✓)</option>';
+            if (settings.apiKeyGemini) modelOptions += '<option value="gemini">Gemini 2.5 Flash Lite (Vision ✓)</option>';
             if (settings.apiKeyClaude) modelOptions += '<option value="claude">Claude (Vision ✓)</option>';
             if (settings.apiKeyOpenai) modelOptions += '<option value="openai">GPT-4 (Vision ✓)</option>';
-            if (!modelOptions) modelOptions = '<option value="">No API Keys Set</option>';
-            console.log('🎓 [SHOW_WIDGET] Model options generated:', modelOptions.substring(0, 50) + '...');
+
+            // Fallback if user hasn't set keys yet
+            if (!modelOptions) modelOptions = '<option value="gemini">Lumina (Default)</option>';
+            console.log('🎓 [SHOW_WIDGET] Model options generated:', modelOptions);
 
             console.log('🎓 [SHOW_WIDGET] Creating widget element...');
             const widget = document.createElement('div');
@@ -270,11 +273,10 @@
         btn.innerText = "Processing..."; btn.disabled = true;
         console.log('🚀 [SUBMIT] Starting request...');
         try {
-            const settings = await chrome.storage.sync.get(['serverUrl', 'apiKey', 'apiKeyGroq', 'apiKeyOpenai', 'apiKeyClaude']);
-            const selectedModel = widget.querySelector('#lumina-m-sel').value;
+            const settings = await chrome.storage.sync.get(['serverUrl', 'apiKeyGemini', 'apiKeyGroq', 'apiKeyOpenai', 'apiKeyClaude']);
+            let selectedModel = widget.querySelector('#lumina-m-sel').value;
             console.log('🚀 [SUBMIT] Settings:', settings);
             console.log('🚀 [SUBMIT] Selected model:', selectedModel);
-            console.log('🚀 [SUBMIT] Selected text:', state.selectedText);
 
             // 🎯 v4.8.2: If no text selected, capture screenshot for Vision
             let screenshot = null;
@@ -286,8 +288,15 @@
                         chrome.runtime.sendMessage({ action: 'captureTab' }, resolve);
                     });
                     if (captureRes && captureRes.success) {
-                        screenshot = captureRes.screenshot.split(',')[1]; // Strip data:image/png;base64,
+                        screenshot = captureRes.screenshot.split(',')[1];
                         console.log('📸 [SUBMIT] Screenshot captured successfully');
+
+                        // 🎯 v4.8.3 Auto-Vision Routing
+                        if (selectedModel === 'groq') {
+                            console.log('🔄 [SUBMIT] Groq cannot see. Auto-routing to Gemini for Vision.');
+                            selectedModel = 'gemini';
+                            showToast("Switching to Gemini for visual analysis...");
+                        }
                     }
                 } catch (err) {
                     console.warn('📸 [SUBMIT] Screenshot failed:', err);
@@ -299,7 +308,7 @@
                 prompt: q,
                 screenshot: screenshot,
                 voice: widget.querySelector('#lumina-v-sel').value,
-                apiKey: settings.apiKey,
+                apiKey: settings.apiKeyGemini,
                 apiKeyGroq: settings.apiKeyGroq,
                 apiKeyOpenai: settings.apiKeyOpenai,
                 apiKeyClaude: settings.apiKeyClaude,
@@ -399,14 +408,14 @@
                 textEl.appendChild(loadingDiv);
                 textEl.scrollTop = textEl.scrollHeight;
 
-                const settings = await chrome.storage.sync.get(['serverUrl', 'apiKey', 'apiKeyGroq', 'apiKeyOpenai', 'apiKeyClaude']);
+                const settings = await chrome.storage.sync.get(['serverUrl', 'apiKeyGemini', 'apiKeyGroq', 'apiKeyOpenai', 'apiKeyClaude']);
                 const res = await fetch(`${settings.serverUrl || CONFIG.serverUrl}/api/generate`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         text: state.selectedText || "", // 🎯 Removed "Context" placeholder
                         prompt: q,
                         history: state.currentConversation.slice(0, -1), // Pass conversation except last user msg
-                        apiKey: settings.apiKey,
+                        apiKey: settings.apiKeyGemini,
                         apiKeyGroq: settings.apiKeyGroq,
                         apiKeyOpenai: settings.apiKeyOpenai,
                         apiKeyClaude: settings.apiKeyClaude,
@@ -746,12 +755,17 @@
             console.error('🎓 [SHOW_TRIGGER] ERROR: Trigger element not found!');
             return;
         }
-        const top = state.selectionCoords.top - 65;
-        const left = state.selectionCoords.left + state.selectionCoords.width / 2 - 27;
+        // 🎯 v4.8.3: Safer positioning
+        let top = state.selectionCoords.top - 65;
+        let left = state.selectionCoords.left + state.selectionCoords.width / 2 - 27;
+
+        // Bounds checking
+        if (top < 10) top = state.selectionCoords.top + state.selectionCoords.height + 10;
+        left = Math.max(10, Math.min(window.innerWidth - 64, left));
+
         console.log('🎓 [SHOW_TRIGGER] Positioning at top:', top, 'left:', left);
         elements.trigger.style.top = `${top}px`;
         elements.trigger.style.left = `${left}px`;
-        console.log('🎓 [SHOW_TRIGGER] Adding lumina-visible class');
         elements.trigger.classList.add('lumina-visible');
         console.log('🎓 [SHOW_TRIGGER] Trigger shown! classList:', elements.trigger.classList, 'style:', elements.trigger.style.cssText);
     }
