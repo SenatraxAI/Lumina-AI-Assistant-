@@ -317,7 +317,6 @@
         }
 
         const visionEnabled = widget.querySelector('#lumina-vis-tg').classList.contains('active');
-        // 🎯 v4.9.0: Removed restrictive validation check. All queries are allowed now.
 
         // 🎯 v3.5.3: Deduplication check
         if (state.pendingPrompts.has(q)) {
@@ -338,7 +337,7 @@
         try {
             const settings = await chrome.storage.sync.get(['serverUrl', 'apiKeyGemini', 'apiKeyGroq', 'apiKeyOpenai', 'apiKeyClaude']);
             let selectedModel = widget.querySelector('#lumina-m-sel').value;
-            const visionEnabled = widget.querySelector('#lumina-vis-tg').classList.contains('active');
+            // Removed redundant visionEnabled declaration
             console.log('🚀 [SUBMIT] Settings:', settings);
             console.log('🚀 [SUBMIT] Selected model:', selectedModel, 'Vision:', visionEnabled);
 
@@ -830,9 +829,12 @@
             console.log('Showing trigger at:', state.selectionCoords);
             showTrigger();
         } else if (text.length === 0) {
-            // 🎯 v4.9.0: Reset context when user clicks to deselect
-            state.selectedText = '';
-            hideTrigger();
+            // 🎯 v4.9.1: Only reset if the user click wasn't inside our UI
+            // This prevents clicking the textarea from wiping the selection context
+            if (!window.getSelection().anchorNode?.parentElement?.closest('.lumina-overlay, #lumina-trigger')) {
+                state.selectedText = '';
+                hideTrigger();
+            }
         }
     }
 
