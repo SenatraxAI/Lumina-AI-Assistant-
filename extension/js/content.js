@@ -311,13 +311,13 @@
         const q = ta.value.trim();
 
         console.log('🚀 [SUBMIT] Query:', q, 'isLoading:', state.isLoading, 'Context:', state.selectedText ? 'FOUND' : 'EMPTY');
-        if (!q) return;
-
-        // 🎯 v4.8.9: Context Validation
-        if (!state.selectedText && !visionEnabled) {
-            showToast("Nothing to context! Highlight text or enable Vision 👁️.");
+        if (!q) {
+            showToast("Please type a question first!");
             return;
         }
+
+        const visionEnabled = widget.querySelector('#lumina-vis-tg').classList.contains('active');
+        // 🎯 v4.9.0: Removed restrictive validation check. All queries are allowed now.
 
         // 🎯 v3.5.3: Deduplication check
         if (state.pendingPrompts.has(q)) {
@@ -829,6 +829,10 @@
             state.selectedText = text;
             console.log('Showing trigger at:', state.selectionCoords);
             showTrigger();
+        } else if (text.length === 0) {
+            // 🎯 v4.9.0: Reset context when user clicks to deselect
+            state.selectedText = '';
+            hideTrigger();
         }
     }
 
