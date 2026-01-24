@@ -117,6 +117,20 @@
             background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.2) 60%, transparent 60%, transparent 70%, rgba(255,255,255,0.2) 70%);
         }
         .lumina-resize-handle:hover { opacity: 0.8; }
+        .lumina-vision-toggle {
+            cursor: pointer; font-size: 18px; opacity: 0.4; transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center;
+            width: 32px; height: 32px; border-radius: 8px;
+        }
+        .lumina-vision-toggle.active { opacity: 1; color: #FF9F0A; background: rgba(255, 159, 10, 0.1); }
+        .lumina-vision-toggle:hover { opacity: 0.8; transform: scale(1.1); }
+        
+        .lumina-shutter {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #fff; z-index: 2147483647; pointer-events: none; opacity: 0;
+            transition: opacity 0.15s;
+        }
+        .lumina-shutter.flash { opacity: 0.8; }
     `;
 
     function ensureStyles() {
@@ -192,7 +206,46 @@
             const widget = document.createElement('div');
             widget.id = 'lumina-query-widget';
             widget.className = 'lumina-overlay';
-            widget.innerHTML = `<div class="lumina-header"><div class="lumina-header-title">Ask Lumina</div><button class="lumina-close-btn">&times;</button></div><div class="lumina-body"><div class="lumina-input-wrap"><textarea class="lumina-textarea" placeholder="Ask anything..."></textarea></div><div class="lumina-controls"><select class="lumina-select" id="lumina-m-sel">${modelOptions}</select><select class="lumina-select" id="lumina-v-sel"><option value="alba">Alba</option><option value="marius">Marius</option><option value="javert">Javert</option><option value="jean">Jean</option><option value="fantine">Fantine</option><option value="cosette">Cosette</option><option value="eponine">Eponine</option><option value="azelma">Azelma</option></select></div><button class="lumina-btn-primary" id="lumina-sub">Get Audio Answer</button></div><div class="lumina-resize-handle"></div>`;
+            widget.innerHTML = `
+                <div class="lumina-header">
+                    <div class="lumina-header-title">Ask Lumina</div>
+                    <button class="lumina-close-btn">&times;</button>
+                </div>
+                <div class="lumina-body">
+                    <div class="lumina-input-wrap">
+                        <textarea class="lumina-textarea" placeholder="Ask anything..."></textarea>
+                        <div class="lumina-vision-toggle" id="lumina-vis-tg" title="Toggle Vision (See Screen)">👁️</div>
+                    </div>
+                    <div class="lumina-controls">
+                        <select class="lumina-select" id="lumina-m-sel">${modelOptions}</select>
+                        <select class="lumina-select" id="lumina-v-sel">
+                            <option value="alba">Alba</option>
+                            <option value="marius">Marius</option>
+                            <option value="javert">Javert</option>
+                            <option value="jean">Jean</option>
+                            <option value="fantine">Fantine</option>
+                            <option value="cosette">Cosette</option>
+                            <option value="eponine">Eponine</option>
+                            <option value="azelma">Azelma</option>
+                        </select>
+                    </div>
+                    <button class="lumina-btn-primary" id="lumina-sub">Get Audio Answer</button>
+                </div>
+                <div class="lumina-resize-handle"></div>`;
+
+            // 🎯 v4.8.5: Vision Toggle logic
+            const visTg = widget.querySelector('#lumina-vis-tg');
+            // Default: ON if no text selected, OFF if text selected
+            if (!state.selectedText) visTg.classList.add('active');
+
+            visTg.onclick = () => {
+                visTg.classList.toggle('active');
+                if (visTg.classList.contains('active')) {
+                    showToast("Vision Enabled: Lumina will see your screen.");
+                } else {
+                    showToast("Vision Disabled: Pure text mode.");
+                }
+            };
 
             console.log('🎓 [SHOW_WIDGET] Appending widget to body...');
             document.body.appendChild(widget);
@@ -276,14 +329,16 @@
         try {
             const settings = await chrome.storage.sync.get(['serverUrl', 'apiKeyGemini', 'apiKeyGroq', 'apiKeyOpenai', 'apiKeyClaude']);
             let selectedModel = widget.querySelector('#lumina-m-sel').value;
+            const visionEnabled = widget.querySelector('#lumina-vis-tg').classList.contains('active');
             console.log('🚀 [SUBMIT] Settings:', settings);
-            console.log('🚀 [SUBMIT] Selected model:', selectedModel);
+            console.log('🚀 [SUBMIT] Selected model:', selectedModel, 'Vision:', visionEnabled);
 
-            // 🎯 v4.8.2: If no text selected, capture screenshot for Vision
+            // 🎯 v4.8.5: Screenshot logic moved to conditional block
             let screenshot = null;
-            if (!state.selectedText) {
-                console.log('📸 [SUBMIT] No text selected, capturing screenshot...');
-                btn.innerText = "Analyzing Screen...";
+            if (visionEnabled) {
+                console.log('📸 [SUBMIT] Vision enabled, triggering shutter...');
+                triggerShutterEffect();
+
                 try {
                     const captureRes = await new Promise(resolve => {
                         chrome.runtime.sendMessage({ action: 'captureTab' }, resolve);
@@ -292,7 +347,7 @@
                         screenshot = captureRes.screenshot.split(',')[1];
                         console.log('📸 [SUBMIT] Screenshot captured successfully');
 
-                        // 🎯 v4.8.4 Dynamic Vision Routing
+                        // 🎯 v4.8.4 Dynamic Vision Routing (ONLY if model can't see)
                         if (selectedModel === 'groq') {
                             console.log('🔄 [SUBMIT] Groq cannot see. Searching for vision models...');
                             if (settings.apiKeyGemini) {
@@ -305,7 +360,6 @@
                                 selectedModel = 'claude';
                                 showToast("Routing to Claude for Vision...");
                             } else {
-                                // Fallback to gemini (server might have env key)
                                 selectedModel = 'gemini';
                                 showToast("Using default Vision engine...");
                             }
@@ -314,6 +368,8 @@
                 } catch (err) {
                     console.warn('📸 [SUBMIT] Screenshot failed:', err);
                 }
+            } else {
+                console.log('📸 [SUBMIT] Vision disabled, sending pure text.');
             }
 
             state.activeModel = selectedModel; // 🎯 Save for follow-ups
@@ -851,6 +907,21 @@
     function showToast(msg) {
         const t = document.createElement('div'); t.className = 'lumina-toast'; t.innerText = msg;
         document.body.appendChild(t); setTimeout(() => t.remove(), 3000);
+    }
+
+    function triggerShutterEffect() {
+        const shutter = document.createElement('div');
+        shutter.className = 'lumina-shutter';
+        document.body.appendChild(shutter);
+
+        // Immediate flash
+        requestAnimationFrame(() => {
+            shutter.classList.add('flash');
+            setTimeout(() => {
+                shutter.classList.remove('flash');
+                setTimeout(() => shutter.remove(), 200);
+            }, 100);
+        });
     }
 
     init();
