@@ -125,12 +125,14 @@
         .lumina-vision-toggle.active { opacity: 1; color: #FF9F0A; background: rgba(255, 159, 10, 0.1); }
         .lumina-vision-toggle:hover { opacity: 0.8; transform: scale(1.1); }
         
-        .lumina-shutter {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: #fff; z-index: 2147483647; pointer-events: none; opacity: 0;
-            transition: opacity 0.15s;
-        }
         .lumina-shutter.flash { opacity: 0.8; }
+
+        .lumina-context-badge {
+            padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 10px; text-transform: uppercase;
+        }
+        .badge-success { background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .badge-warning { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+        .badge-info { background: rgba(59, 130, 246, 0.2); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); }
     `;
 
     function ensureStyles() {
@@ -216,6 +218,11 @@
                         <textarea class="lumina-textarea" placeholder="Ask anything..."></textarea>
                         <div class="lumina-vision-toggle" id="lumina-vis-tg" title="Toggle Vision (See Screen)">👁️</div>
                     </div>
+                    
+                    <div id="lumina-context-bar" style="font-size: 11px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; opacity: 0.9;">
+                        <!-- Updated dynamically via updateContextStatus() -->
+                    </div>
+
                     <div class="lumina-controls">
                         <select class="lumina-select" id="lumina-m-sel">${modelOptions}</select>
                         <select class="lumina-select" id="lumina-v-sel">
@@ -233,13 +240,40 @@
                 </div>
                 <div class="lumina-resize-handle"></div>`;
 
-            // 🎯 v4.8.5: Vision Toggle logic
+            // 🎯 v4.9.2: Content Status logic
             const visTg = widget.querySelector('#lumina-vis-tg');
+            const contextBar = widget.querySelector('#lumina-context-bar');
+
+            function updateContextStatus() {
+                const hasSelection = state.selectedText && state.selectedText.length > 0;
+                const visionOn = visTg.classList.contains('active');
+
+                let html = '';
+                if (hasSelection) {
+                    html += '<span class="lumina-context-badge badge-success">✓ Text Linked</span>';
+                } else {
+                    html += '<span class="lumina-context-badge badge-warning">⚠ No Selection</span>';
+                }
+
+                if (visionOn) {
+                    html += '<span class="lumina-context-badge badge-info">👁 Vision Active</span>';
+                }
+
+                // Add helpful tip if both labels look blind
+                if (!hasSelection && !visionOn) {
+                    html += '<span style="opacity:0.6; font-size:10px;">(Site blocked selection. Enable 👁️?)</span>';
+                }
+
+                contextBar.innerHTML = html;
+            }
+
             // Default: ON if no text selected, OFF if text selected
             if (!state.selectedText) visTg.classList.add('active');
+            updateContextStatus(); // Initial update
 
             visTg.onclick = () => {
                 visTg.classList.toggle('active');
+                updateContextStatus(); // Update on toggle
                 if (visTg.classList.contains('active')) {
                     showToast("Vision Enabled: Lumina will see your screen.");
                 } else {
