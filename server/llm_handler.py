@@ -350,17 +350,35 @@ class LLMHandler:
                     )
         else:
             # CASE B: Text Selected (Process as normal)
-            if history:
-                 final_prompt = (
-                    f"REFERENCE CONTEXT (User is reading this text):\n{text}\n\n"
-                    f"USER FOLLOW-UP QUESTION: {prompt}\n\n"
-                )
+            if images:
+                # 🎯 v4.9.4: Hybrid Mode (Text + Vision)
+                if history:
+                    final_prompt = (
+                        f"REFERENCE TEXT CONTEXT:\n{text}\n\n"
+                        "REFERENCE VISUAL CONTEXT: I have also provided a screenshot for broader layout/visual context.\n"
+                        "PRIORITY: Focus primarily on the text above, but use the screenshot if it helps answer the following:\n\n"
+                        f"USER FOLLOW-UP QUESTION: {prompt}\n\n"
+                    )
+                else:
+                    final_prompt = (
+                        f"SELECTED TEXT (Priority Context):\n{text}\n\n"
+                        "I am also providing a SCREENSHOT of the page for visual reference.\n"
+                        "INSTRUCTION: Use the SELECTED TEXT as your primary source. Use the SCREENSHOT to understand the visual layout or surrounding items if needed to answer the user's question.\n\n"
+                        f"USER QUESTION: {prompt}\n\n"
+                    )
             else:
-                final_prompt = (
-                    f"I am providing you with text selected from a webpage and a user's question about it.\n\n"
-                    f"SELECTED TEXT:\n{text}\n\n"
-                    f"USER QUESTION: {prompt}\n\n"
-                )
+                # Pure Text mode
+                if history:
+                    final_prompt = (
+                        f"REFERENCE CONTEXT (User is reading this text):\n{text}\n\n"
+                        f"USER FOLLOW-UP QUESTION: {prompt}\n\n"
+                    )
+                else:
+                    final_prompt = (
+                        f"I am providing you with text selected from a webpage and a user's question about it.\n\n"
+                        f"SELECTED TEXT:\n{text}\n\n"
+                        f"USER QUESTION: {prompt}\n\n"
+                    )
         
         final_prompt += (
             f"\n\nSYSTEM INSTRUCTIONS FOR AUDIO OUTPUT:\n"
