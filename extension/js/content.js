@@ -11,7 +11,7 @@
         currentConversation: [], // Track conversation history
         activeModel: 'gemini', // 🎯 v4.8.4: Track the model used for the current thread
         pendingPrompts: new Set(), // 🎯 v3.5.3: Prevent duplicate generations
-        mediaRecorder: null, audioChunks: [] // 🎯 v4.10.0: Voice state
+        recognition: null // 🎯 v4.10.3: Free Web Speech state
     };
     let elements = {};
 
@@ -1030,60 +1030,65 @@
     }
 
     async function startRecording(btn, textarea) {
-        if (state.mediaRecorder && state.mediaRecorder.state === 'recording') return;
+        if (state.recognition) return;
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            showToast("Your browser doesn't support free voice-to-text.");
+            return;
+        }
 
         try {
-            console.log('🎙️ [MIC] Starting recording...');
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            state.audioChunks = [];
-            state.mediaRecorder = new MediaRecorder(stream);
+            console.log('🎙️ [MIC] Starting free recognition...');
+            state.recognition = new SpeechRecognition();
+            state.recognition.continuous = false;
+            state.recognition.interimResults = true;
+            state.recognition.lang = 'en-US';
 
-            state.mediaRecorder.ondataavailable = (e) => {
-                if (e.data.size > 0) state.audioChunks.push(e.data);
-            };
+            let finalTranscript = '';
+            const originalVal = textarea.value;
 
-            state.mediaRecorder.onstop = async () => {
-                console.log('🎙️ [MIC] Recording stopped, transcribing...');
-                const audioBlob = new Blob(state.audioChunks, { type: 'audio/wav' });
-                const formData = new FormData();
-                formData.append('file', audioBlob, 'recording.wav');
-
-                const settings = await chrome.storage.sync.get(['serverUrl', 'apiKeyOpenai']);
-                const serverUrl = settings.serverUrl || CONFIG.serverUrl;
-
-                try {
-                    const res = await fetch(`${serverUrl}/api/stt`, {
-                        method: 'POST',
-                        body: formData
-                    });
-                    const data = await res.json();
-                    if (data.text) {
-                        const currentVal = textarea.value;
-                        textarea.value = currentVal + (currentVal ? ' ' : '') + data.text;
-                        textarea.dispatchEvent(new Event('input')); // Trigger resize if any
+            state.recognition.onresult = (event) => {
+                let interimTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
                     }
-                } catch (err) {
-                    console.error('🎙️ [MIC] Transcription error:', err);
-                    showToast("Failed to hear you... try again?");
                 }
-
-                // Cleanup stream
-                stream.getTracks().forEach(track => track.stop());
+                const newText = finalTranscript || interimTranscript;
+                textarea.value = originalVal + (originalVal ? ' ' : '') + newText;
+                textarea.scrollTop = textarea.scrollHeight;
             };
 
-            state.mediaRecorder.start();
-            btn.classList.add('recording');
-            showToast("Listening... (Speak now)");
+            state.recognition.onstart = () => {
+                btn.classList.add('recording');
+                showToast("Listening... (Built-in Free Mode)");
+            };
+
+            state.recognition.onend = () => {
+                btn.classList.remove('recording');
+                state.recognition = null;
+            };
+
+            state.recognition.onerror = (event) => {
+                console.error('🎙️ [MIC] Recognition error:', event.error);
+                if (event.error === 'not-allowed') showToast("Mic permission denied!");
+                else showToast("Speed detection failed.");
+                btn.classList.remove('recording');
+                state.recognition = null;
+            };
+
+            state.recognition.start();
         } catch (err) {
-            console.error('🎙️ [MIC] Access denied:', err);
-            showToast("Microphone access denied!");
+            console.error('🎙️ [MIC] Error:', err);
         }
     }
 
     function stopRecording(btn) {
-        if (state.mediaRecorder && state.mediaRecorder.state === 'recording') {
-            state.mediaRecorder.stop();
-            btn.classList.remove('recording');
+        if (state.recognition) {
+            state.recognition.stop();
         }
     }
 

@@ -608,15 +608,20 @@ async def speech_to_text(file: UploadFile = File(...)):
             f.write(audio_data)
             
         try:
-            client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            # 🎯 v4.10.2: Use Groq for STT to save cost (almost free)
+            import groq
+            # Use provided apiKey or fallback to env
+            api_key = (await file.form())["apiKey"] if "apiKey" in (await file.form()) else os.getenv("GROQ_API_KEY")
+            
+            client = groq.Groq(api_key=api_key)
             with open(temp_path, "rb") as audio_file:
                 transcript = client.audio.transcriptions.create(
-                    model="whisper-1", 
-                    file=audio_file,
+                    model="whisper-large-v3", 
+                    file=("recording.wav", audio_file.read()),
                     response_format="text"
                 )
             
-            logger.info(f"🎙️ [STT] Transcribed text: {transcript[:50]}...")
+            logger.info(f"🎙️ [STT] Groq Transcribed text: {transcript[:50]}...")
             return {"success": True, "text": transcript}
             
         finally:
