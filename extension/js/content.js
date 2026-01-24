@@ -710,6 +710,7 @@
             if (confirm("Clear history?")) {
                 chrome.storage.local.remove(window.location.href, () => {
                     console.log('💡 [FAB] History cleared');
+                    state.currentConversation = []; // 🎯 v4.8.7: Reset in-memory state
                     loadHistoryItems();
                 });
             }
