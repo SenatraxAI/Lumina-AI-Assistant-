@@ -9,6 +9,7 @@
         selectionCoords: null, selectedText: '', isLoading: false,
         audioElement: null, blobUrl: null,
         currentConversation: [], // Track conversation history
+        activeModel: 'gemini', // 🎯 v4.8.4: Track the model used for the current thread
         pendingPrompts: new Set() // 🎯 v3.5.3: Prevent duplicate generations
     };
     let elements = {};
@@ -291,17 +292,31 @@
                         screenshot = captureRes.screenshot.split(',')[1];
                         console.log('📸 [SUBMIT] Screenshot captured successfully');
 
-                        // 🎯 v4.8.3 Auto-Vision Routing
+                        // 🎯 v4.8.4 Dynamic Vision Routing
                         if (selectedModel === 'groq') {
-                            console.log('🔄 [SUBMIT] Groq cannot see. Auto-routing to Gemini for Vision.');
-                            selectedModel = 'gemini';
-                            showToast("Switching to Gemini for visual analysis...");
+                            console.log('🔄 [SUBMIT] Groq cannot see. Searching for vision models...');
+                            if (settings.apiKeyGemini) {
+                                selectedModel = 'gemini';
+                                showToast("Routing to Gemini for Vision...");
+                            } else if (settings.apiKeyOpenai) {
+                                selectedModel = 'openai';
+                                showToast("Routing to GPT-4 for Vision...");
+                            } else if (settings.apiKeyClaude) {
+                                selectedModel = 'claude';
+                                showToast("Routing to Claude for Vision...");
+                            } else {
+                                // Fallback to gemini (server might have env key)
+                                selectedModel = 'gemini';
+                                showToast("Using default Vision engine...");
+                            }
                         }
                     }
                 } catch (err) {
                     console.warn('📸 [SUBMIT] Screenshot failed:', err);
                 }
             }
+
+            state.activeModel = selectedModel; // 🎯 Save for follow-ups
 
             const requestBody = {
                 text: state.selectedText || "", // 🎯 Removed "Context" placeholder
@@ -419,7 +434,7 @@
                         apiKeyGroq: settings.apiKeyGroq,
                         apiKeyOpenai: settings.apiKeyOpenai,
                         apiKeyClaude: settings.apiKeyClaude,
-                        llmProvider: 'gemini',
+                        llmProvider: state.activeModel || 'gemini', // 🎯 v4.8.4: Persist the thread's model
                         shouldAudio: false // 🎯 v3.0: Always false for follow-ups (on-demand)
                     })
                 });
