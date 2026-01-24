@@ -285,7 +285,11 @@
             ta.focus();
             console.log('🎓 [SHOW_WIDGET] Textarea focused');
 
-            widget.querySelector('.lumina-close-btn').onclick = () => widget.remove();
+            widget.querySelector('.lumina-close-btn').onclick = () => {
+                widget.remove();
+                state.selectedText = ''; // 🎯 v4.8.8: Reset selection on cancel
+                state.currentConversation = []; // Also clean memory on cancel
+            };
             widget.querySelector('#lumina-sub').onclick = () => handleSubmit(widget);
             ta.onkeydown = (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -399,6 +403,9 @@
 
             const data = await res.json();
             console.log('🚀 [SUBMIT] Response data:', data);
+
+            // Clear choice/selection AFTER successful submit so next trigger is fresh
+            state.selectedText = '';
 
             // Initialize conversation state with the new query and response
             state.currentConversation = [
@@ -852,7 +859,10 @@
         document.addEventListener('mouseup', handleTextSelection);
         document.addEventListener('mousedown', (e) => {
             if (!e.target.closest('#lumina-trigger, .lumina-overlay, #lumina-history-fab, #lumina-history-list')) {
-                hideTrigger(); if (elements.historyList) elements.historyList.classList.remove('visible'); if (elements.fab) elements.fab.classList.remove('open');
+                hideTrigger();
+                state.selectedText = ''; // 🎯 v4.8.8: Reset if user clicks away
+                if (elements.historyList) elements.historyList.classList.remove('visible');
+                if (elements.fab) elements.fab.classList.remove('open');
             }
         });
         chrome.runtime.onMessage.addListener((msg) => {
